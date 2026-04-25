@@ -1,0 +1,6 @@
+{
+  "name": "qlbh-telegram-bot",
+  "version": "1.0.0",
+  "description": "Bot kích hoạt key qua Telegram — chạy serverless trên Vercel",
+  "engines": { "node": "18.x" }
+}
