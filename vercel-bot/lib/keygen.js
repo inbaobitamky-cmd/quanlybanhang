@@ -6,9 +6,15 @@ const _raw = [0x4E,0x53,0x5D,0x57,0x40,0x4F,0x57,0x5E,0x51,0x52,0x5A,0x52,0x40,
 const MASTER_SECRET = _raw.map(c => String.fromCharCode(c ^ 0x1F)).join('');
 
 function generateKey(machineId, months) {
-    const expiry = months === 0
-        ? '9999-12-31'
-        : new Date(Date.now() + months * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    let expiry;
+    if (months === 0) {
+        expiry = '9999-12-31';
+    } else if (months < 0) {
+        // Âm = số ngày (ví dụ: -3 = 3 ngày thử nghiệm)
+        expiry = new Date(Date.now() + Math.abs(months) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    } else {
+        expiry = new Date(Date.now() + months * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    }
 
     const hmac = crypto.createHmac('sha256', MASTER_SECRET)
         .update(`${machineId}|${expiry}`)
