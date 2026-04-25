@@ -1,0 +1,23 @@
+node_modules/
+*.log
+.env
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+release/
+data/database.db-journal
+.vscode/
+.idea/
+
+# Dữ liệu nhạy cảm — không push lên GitHub
+data.json
+license.dat
+data/database.db
+keygit.txt
+server_log.txt
+server_err.txt
+
+# File cài đặt lớn
+*.msi
+*.exe
