@@ -100,6 +100,10 @@ async function sendActivationRequest(userId, machineId, mInfo, userName, shopNam
         reply_markup: {
             inline_keyboard: [
                 [
+                    { text: '🧪 3 Ngày thử', callback_data: `ok|${userId}|${machineId}|-3` },
+                    { text: '📅 6 Tháng',    callback_data: `ok|${userId}|${machineId}|6`  }
+                ],
+                [
                     { text: '1️⃣ 1 Năm',     callback_data: `ok|${userId}|${machineId}|12` },
                     { text: '2️⃣ 2 Năm',     callback_data: `ok|${userId}|${machineId}|24` }
                 ],
@@ -125,7 +129,13 @@ async function handleCallback(cb) {
 
     if (action === 'ok') {
         const { key, expiry } = generateKey(machineId, months);
-        const planLabel = months === 0 ? 'Vĩnh viễn ♾️' : `${months / 12} năm`;
+
+        let planLabel;
+        if (months === 0)       planLabel = 'Vĩnh viễn ♾️';
+        else if (months < 0)    planLabel = `${Math.abs(months)} ngày thử 🧪`;
+        else if (months < 12)   planLabel = `${months} tháng 📅`;
+        else                    planLabel = `${months / 12} năm`;
+
         const expiryFmt = months === 0 ? 'Không hết hạn' : new Date(expiry).toLocaleDateString('vi-VN');
 
         await tg('sendMessage', {
