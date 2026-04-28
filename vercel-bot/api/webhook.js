@@ -49,10 +49,22 @@ async function ghPut(filePath, content, sha, message) {
 
 // ── Đọc / ghi danh sách cửa hàng ──
 async function getShops() {
-    const result = await ghGet('shops.json');
-    if (!result) return { shops: [], sha: null };
-    const shops = Array.isArray(result.content) ? result.content : [];
-    return { shops, sha: result.sha };
+    // Đọc song song shops.json và revoked.json
+    const [shopsResult, revokedResult] = await Promise.all([
+        ghGet('shops.json'),
+        ghGet('revoked.json')
+    ]);
+    if (!shopsResult) return { shops: [], sha: null };
+    const shops    = Array.isArray(shopsResult.content) ? shopsResult.content : [];
+    const revoked  = Array.isArray(revokedResult?.content) ? revokedResult.content : [];
+
+    // Merge trạng thái revoked từ revoked.json (admin panel cũng ghi vào đây)
+    shops.forEach(s => {
+        if (revoked.includes(s.machineId)) {
+            s.revoked = true;
+        }
+    });
+    return { shops, sha: shopsResult.sha };
 }
 
 async function saveShops(shops, sha) {
