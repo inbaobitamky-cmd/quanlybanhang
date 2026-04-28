@@ -1,46 +1,46 @@
 [
-    {
-        "revoked":  false,
-        "userName":  "Phu",
-        "months":  -3,
-        "plan":  "3 ngay thu",
-        "userId":  "8606912528",
-        "activatedAt":  "2026-04-22T11:42:53.418Z",
-        "shopName":  "PHU PC",
-        "expiry":  "2026-04-25",
-        "machineId":  "BF87B1-E5EEEE-3AD64B-FE8F90"
-    },
-    {
-        "revoked":  false,
-        "userName":  "@hoanglongnguyen",
-        "months":  -3,
-        "plan":  "3 ngay thu",
-        "userId":  "5240628702",
-        "activatedAt":  "2026-04-22T10:23:12.140Z",
-        "shopName":  "Truyen Nguyen",
-        "expiry":  "2026-04-25",
-        "machineId":  "6E1DE5-D7A968-77006E-6632D3"
-    },
-    {
-        "revoked":  false,
-        "userName":  "@duyennnmyy",
-        "months":  0,
-        "plan":  "Vinh vien",
-        "userId":  "5160804134",
-        "activatedAt":  "2026-04-22T02:39:59.826Z",
-        "shopName":  "ANH DUONG COMPUTER",
-        "expiry":  "9999-12-31",
-        "machineId":  "586233-7103A7-85FCBC-CD1902"
-    },
-    {
-        "revoked":  false,
-        "userName":  "@duongdzaiiii",
-        "months":  0,
-        "plan":  "Vinh vien",
-        "userId":  "1342659789",
-        "activatedAt":  "2026-04-21T12:15:08.152Z",
-        "shopName":  "ANH DUONG COMPUTER",
-        "expiry":  "9999-12-31",
-        "machineId":  "76C948-7F8062-6BD856-6F6BEA"
-    }
+  {
+    "machineId": "BF87B1-E5EEEE-3AD64B-FE8F90",
+    "shopName": "PHU PC",
+    "userId": "8606912528",
+    "userName": "Phu",
+    "plan": "3 ngay thu",
+    "months": -3,
+    "expiry": "2026-04-25",
+    "activatedAt": "2026-04-22T11:42:53.418Z",
+    "revoked": false
+  },
+  {
+    "machineId": "6E1DE5-D7A968-77006E-6632D3",
+    "shopName": "Truyen Nguyen",
+    "userId": "5240628702",
+    "userName": "@hoanglongnguyen",
+    "plan": "3 ngay thu",
+    "months": -3,
+    "expiry": "2026-04-25",
+    "activatedAt": "2026-04-22T10:23:12.140Z",
+    "revoked": false
+  },
+  {
+    "machineId": "586233-7103A7-85FCBC-CD1902",
+    "shopName": "ANH DUONG COMPUTER",
+    "userId": "5160804134",
+    "userName": "@duyennnmyy",
+    "plan": "Vinh vien",
+    "months": 0,
+    "expiry": "9999-12-31",
+    "activatedAt": "2026-04-22T02:39:59.826Z",
+    "revoked": false
+  },
+  {
+    "machineId": "76C948-7F8062-6BD856-6F6BEA",
+    "shopName": "ANH DUONG COMPUTER",
+    "userId": "1342659789",
+    "userName": "@duongdzaiiii",
+    "plan": "Vinh vien",
+    "months": 0,
+    "expiry": "9999-12-31",
+    "activatedAt": "2026-04-21T12:15:08.152Z",
+    "revoked": false
+  }
 ]
