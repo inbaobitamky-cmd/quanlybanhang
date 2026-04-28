@@ -1,1 +1,11 @@
-[]
+{
+    "machineId":  "6E1DE5-D7A968-77006E-6632D3",
+    "shopName":  "Quan Nguyen",
+    "userId":  "",
+    "userName":  "@QuanNguyen",
+    "plan":  "3 ngay thu",
+    "months":  -3,
+    "expiry":  "2026-04-30",
+    "activatedAt":  "2026-04-26T12:26:00.000Z",
+    "revoked":  false
+}
