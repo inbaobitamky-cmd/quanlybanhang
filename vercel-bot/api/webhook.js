@@ -132,6 +132,40 @@ function buildShopListMessage(shops, page) {
     return { text, buttons };
 }
 
+// ============ ADMIN KEYBOARD ============
+const ADMIN_KEYBOARD = {
+    keyboard: [
+        [{ text: '📋 Danh sách cửa hàng' }, { text: '📊 Thống kê' }],
+        [{ text: '❓ Hướng dẫn' }]
+    ],
+    resize_keyboard: true,
+    persistent: true
+};
+
+// Đăng ký danh sách lệnh (gọi 1 lần hoặc khi /setup)
+async function setupBotCommands() {
+    // Lệnh cho admin (scope: chat cụ thể)
+    if (ADMIN_ID) {
+        await tg('setMyCommands', {
+            commands: [
+                { command: 'danhsach',  description: '📋 Xem danh sách cửa hàng' },
+                { command: 'thongke',   description: '📊 Thống kê tổng quan' },
+                { command: 'help',      description: '❓ Hướng dẫn sử dụng' },
+                { command: 'khoa',      description: '🔴 Khóa tài khoản (nhập MachineID)' },
+                { command: 'mokhoa',    description: '🟢 Mở khóa tài khoản (nhập MachineID)' },
+            ],
+            scope: { type: 'chat', chat_id: parseInt(ADMIN_ID) }
+        });
+    }
+    // Lệnh mặc định cho tất cả user
+    await tg('setMyCommands', {
+        commands: [
+            { command: 'start', description: '🚀 Bắt đầu / Kích hoạt phần mềm' },
+            { command: 'help',  description: '❓ Trợ giúp' },
+        ]
+    });
+}
+
 // ============ XỬ LÝ TIN NHẮN ============
 async function handleMessage(msg) {
     const userId   = String(msg.from.id);
@@ -142,7 +176,11 @@ async function handleMessage(msg) {
     // ── Deep link từ phần mềm: /start MACHINEID ──
     if (text.startsWith('/start ')) {
         const payload = text.replace('/start ', '').trim().toUpperCase();
-        if (payload.length < 10) { await sendWelcome(userId); return; }
+        if (payload.length < 10) {
+            if (isAdmin) { await sendAdminWelcome(userId, msg.from.first_name); }
+            else         { await sendWelcome(userId); }
+            return;
+        }
 
         let cleanId = payload;
         let mInfo   = { cpu: '—', board: '—', os: '—', ram: '—' };
@@ -161,14 +199,54 @@ async function handleMessage(msg) {
         return;
     }
 
-    if (text === '/start') { await sendWelcome(userId); return; }
+    if (text === '/start') {
+        if (isAdmin) { await sendAdminWelcome(userId, msg.from.first_name); }
+        else         { await sendWelcome(userId); }
+        return;
+    }
 
-    // ── Lệnh admin ──
+    // ── Lệnh / nút admin ──
     if (isAdmin) {
-        if (text === '/danhsach' || text === '/list' || text === '/ds') {
+        // Hỗ trợ cả lệnh /danhsach lẫn nút bấm "📋 Danh sách cửa hàng"
+        if (text === '/danhsach' || text === '/list' || text === '/ds' || text === '📋 Danh sách cửa hàng') {
             const { shops } = await getShops();
             const { text: msgText, buttons } = buildShopListMessage(shops, 0);
-            await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML', text: msgText, reply_markup: { inline_keyboard: buttons } });
+            await tg('sendMessage', {
+                chat_id: userId, parse_mode: 'HTML',
+                text: msgText,
+                reply_markup: { inline_keyboard: buttons }
+            });
+            return;
+        }
+
+        // Thống kê
+        if (text === '/thongke' || text === '📊 Thống kê') {
+            const { shops } = await getShops();
+            const total    = shops.length;
+            const active   = shops.filter(s => !s.revoked).length;
+            const locked   = shops.filter(s =>  s.revoked).length;
+            const lifetime = shops.filter(s => s.expiry === '9999-12-31').length;
+            const expiring = shops.filter(s => {
+                if (s.revoked || s.expiry === '9999-12-31') return false;
+                const diff = (new Date(s.expiry) - Date.now()) / 86400000;
+                return diff >= 0 && diff <= 30;
+            }).length;
+            const expired  = shops.filter(s => {
+                if (s.expiry === '9999-12-31') return false;
+                return new Date(s.expiry) < new Date();
+            }).length;
+            await tg('sendMessage', {
+                chat_id: userId, parse_mode: 'HTML',
+                text: `📊 <b>Thống kê cửa hàng</b>\n\n` +
+                      `🏪 Tổng cửa hàng: <b>${total}</b>\n` +
+                      `🟢 Đang hoạt động: <b>${active}</b>\n` +
+                      `🔴 Bị khóa: <b>${locked}</b>\n` +
+                      `♾️ Vĩnh viễn: <b>${lifetime}</b>\n` +
+                      `⚠️ Sắp hết hạn (≤30 ngày): <b>${expiring}</b>\n` +
+                      `❌ Đã hết hạn: <b>${expired}</b>\n\n` +
+                      `⏰ ${new Date().toLocaleString('vi-VN')}`,
+                reply_markup: { keyboard: ADMIN_KEYBOARD.keyboard, resize_keyboard: true, persistent: true }
+            });
             return;
         }
 
@@ -188,10 +266,20 @@ async function handleMessage(msg) {
             return;
         }
 
-        if (text === '/help' || text === '/huongdan') {
+        if (text === '/help' || text === '/huongdan' || text === '❓ Hướng dẫn') {
             await tg('sendMessage', {
                 chat_id: userId, parse_mode: 'HTML',
-                text: `📖 <b>Lệnh Admin</b>\n\n/danhsach — Xem danh sách + nút khóa/mở khóa\n/khoa <code>MACHINEID</code> — Khóa ngay\n/mokhoa <code>MACHINEID</code> — Mở khóa ngay\n/help — Xem lệnh này`
+                text: `📖 <b>Hướng dẫn Admin</b>\n\n` +
+                      `<b>Nút bấm nhanh (1 chạm):</b>\n` +
+                      `📋 Danh sách cửa hàng — xem + khóa/mở\n` +
+                      `📊 Thống kê — tổng quan số liệu\n\n` +
+                      `<b>Lệnh:</b>\n` +
+                      `/danhsach — Xem danh sách cửa hàng\n` +
+                      `/thongke — Thống kê tổng quan\n` +
+                      `/khoa <code>MACHINEID</code> — Khóa tài khoản\n` +
+                      `/mokhoa <code>MACHINEID</code> — Mở khóa tài khoản\n` +
+                      `/help — Xem hướng dẫn này`,
+                reply_markup: { keyboard: ADMIN_KEYBOARD.keyboard, resize_keyboard: true, persistent: true }
             });
             return;
         }
@@ -213,6 +301,17 @@ async function handleMessage(msg) {
     if (!isAdmin) {
         await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML', text: 'Để kích hoạt phần mềm, hãy mở phần mềm và nhấn nút <b>"Yêu cầu kích hoạt"</b>.' });
     }
+}
+
+async function sendAdminWelcome(userId, firstName) {
+    await setupBotCommands().catch(() => {}); // đăng ký lệnh khi admin /start
+    await tg('sendMessage', {
+        chat_id: userId, parse_mode: 'HTML',
+        text: `👑 Xin chào Admin <b>${firstName || ''}</b>!\n\n` +
+              `Sử dụng các nút bên dưới hoặc gõ lệnh để quản lý.\n\n` +
+              `📋 <b>Nút bấm nhanh đã sẵn sàng!</b>`,
+        reply_markup: { keyboard: ADMIN_KEYBOARD.keyboard, resize_keyboard: true, persistent: true }
+    });
 }
 
 async function sendWelcome(userId) {
@@ -348,10 +447,22 @@ async function handleCallback(cb) {
 
 // ============ ENTRY POINT (Vercel Serverless) ============
 module.exports = async function handler(req, res) {
+    // ── Setup endpoint: GET /api/webhook?setup=1 ──
+    if (req.method === 'GET' && req.query?.setup === '1') {
+        try {
+            await setupBotCommands();
+            res.status(200).json({ ok: true, message: 'Bot commands registered!' });
+        } catch(e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+        return;
+    }
+
+    if (req.method === 'GET') { res.status(200).send('✅ Bot đang hoạt động'); return; }
+
     if (SECRET && req.headers['x-telegram-bot-api-secret-token'] !== SECRET) {
         res.status(403).json({ error: 'Forbidden' }); return;
     }
-    if (req.method === 'GET') { res.status(200).send('✅ Bot đang hoạt động'); return; }
     if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
     try {
