@@ -126,7 +126,7 @@ function buildShopListMessage(shops, page) {
         text += `   📅 ${shop.plan || '?'} — Hết: ${expiry}\n`;
         text += `   👤 ${shop.userName || '—'}\n\n`;
 
-        const shortName = name.substring(0, 12);
+        const shortName = name.length > 20 ? name.substring(0, 18) + '…' : name;
         if (shop.revoked) {
             buttons.push([{ text: `🟢 Mở khóa: ${shortName}`, callback_data: `unrevoke|${shop.machineId}|${page}` }]);
         } else {
