@@ -1,9 +1,9 @@
 [
   {
     "machineId": "BF87B1-E5EEEE-3AD64B-FE8F90",
-    "shopName": "PHÚ PC",
+    "shopName": "PHU PC",
     "userId": "8606912528",
-    "userName": "Phú",
+    "userName": "Phu",
     "plan": "3 ngay thu",
     "months": -3,
     "expiry": "2026-04-25",
@@ -12,19 +12,18 @@
   },
   {
     "machineId": "6E1DE5-D7A968-77006E-6632D3",
-    "shopName": "Truyền Nguyễn",
+    "shopName": "Quan (Truyen Nguyen - da gia han)",
     "userId": "5240628702",
     "userName": "@hoanglongnguyen",
-    "plan": "3 ngay thu",
+    "plan": "Gia han den 30/4",
     "months": -3,
-    "expiry": "2026-04-25",
-    "activatedAt": "2026-04-22T10:23:12.140Z",
-    "revoked": true,
-    "revokedAt": "2026-04-28T23:54:03.499Z"
+    "expiry": "2026-04-30",
+    "activatedAt": "2026-04-27T05:45:21.141Z",
+    "revoked": false
   },
   {
     "machineId": "586233-7103A7-85FCBC-CD1902",
-    "shopName": "ÁNH DƯƠNG COMPUTER",
+    "shopName": "ANH DUONG COMPUTER",
     "userId": "5160804134",
     "userName": "@duyennnmyy",
     "plan": "Vinh vien",
@@ -35,7 +34,7 @@
   },
   {
     "machineId": "76C948-7F8062-6BD856-6F6BEA",
-    "shopName": "ÁNH DƯƠNG COMPUTER",
+    "shopName": "ANH DUONG COMPUTER",
     "userId": "1342659789",
     "userName": "@duongdzaiiii",
     "plan": "Vinh vien",
