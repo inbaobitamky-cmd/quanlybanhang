@@ -19,7 +19,8 @@
     "months": -3,
     "expiry": "2026-04-30",
     "activatedAt": "2026-04-27T05:45:21.141Z",
-    "revoked": false
+    "revoked": true,
+    "revokedAt": "2026-04-29T00:01:48.574Z"
   },
   {
     "machineId": "586233-7103A7-85FCBC-CD1902",
