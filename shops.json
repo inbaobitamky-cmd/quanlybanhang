@@ -43,5 +43,16 @@
     "expiry": "9999-12-31",
     "activatedAt": "2026-04-21T12:15:08.152Z",
     "revoked": false
+  },
+  {
+    "machineId": "AC86AF-FB1A7F-06BE56-658EE3",
+    "shopName": "THIÊN AN",
+    "userId": "781774414",
+    "userName": "@ONEFIX_PRO",
+    "plan": "3 ngày thử 🧪",
+    "months": -3,
+    "expiry": "2026-05-04",
+    "activatedAt": "2026-05-01T03:26:58.906Z",
+    "revoked": false
   }
 ]
