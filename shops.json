@@ -65,5 +65,16 @@
     "expiry": "2026-05-06",
     "activatedAt": "2026-05-03T03:06:16.480Z",
     "revoked": false
+  },
+  {
+    "machineId": "7DB0F9-E67BFD-13F0FF-EAD981",
+    "shopName": "HBACK COMPUTER",
+    "userId": "7016890588",
+    "userName": "Hbach",
+    "plan": "3 ngày thử 🧪",
+    "months": -3,
+    "expiry": "2026-05-06",
+    "activatedAt": "2026-05-03T03:58:32.831Z",
+    "revoked": false
   }
 ]
