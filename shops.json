@@ -19,7 +19,7 @@
     "months": 6,
     "expiry": "2026-11-04",
     "activatedAt": "2026-05-08T01:32:43.954Z",
-    "revoked": false,
+    "revoked": true,
     "revokedAt": "2026-04-29T00:41:28.064Z"
   },
   {
@@ -75,6 +75,17 @@
     "months": -3,
     "expiry": "2026-05-06",
     "activatedAt": "2026-05-03T03:58:32.831Z",
+    "revoked": false
+  },
+  {
+    "machineId": "D785E5-97B350-31DB7F-643CA9",
+    "shopName": "BÁC SĨ TIN HỌC",
+    "userId": "7452942093",
+    "userName": "Nguyen",
+    "plan": "3 ngày thử 🧪",
+    "months": -3,
+    "expiry": "2026-05-11",
+    "activatedAt": "2026-05-08T04:39:42.894Z",
     "revoked": false
   }
 ]
