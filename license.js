@@ -324,9 +324,13 @@ function saveLastCheckTime() {
 }
 
 function checkOnlineRevocation(machineId) {
+    // Check mỗi 5 phút (thay vì 24 giờ) để phát hiện revoke nhanh hơn
     const lastCheck = getLastCheckTime();
-    const dayMs = 24 * 60 * 60 * 1000;
-    if (Date.now() - lastCheck < dayMs) return Promise.resolve(true); // Chưa đến hạn check
+    const intervalMs = 5 * 60 * 1000;
+    if (Date.now() - lastCheck < intervalMs) {
+        // Chưa đến hạn check → trả về trạng thái hiện tại (revoked nếu đang bị block)
+        return Promise.resolve(!isLicenseBlocked());
+    }
 
     return new Promise(resolve => {
         const url = `https://raw.githubusercontent.com/${GITHUB_REVOKE_REPO}/main/revoked.json`;
@@ -340,9 +344,9 @@ function checkOnlineRevocation(machineId) {
                     if (Array.isArray(revoked) && revoked.includes(machineId)) {
                         resolve(false); // Bị thu hồi
                     } else {
-                        resolve(true);
+                        resolve(true);  // Không bị thu hồi
                     }
-                } catch { resolve(true); }
+                } catch { resolve(true); } // Parse lỗi → cho qua
             });
         });
         req.on('error', () => resolve(true)); // Mất mạng → cho qua

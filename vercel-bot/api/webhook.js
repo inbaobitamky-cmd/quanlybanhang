@@ -414,13 +414,23 @@ async function handleCallback(cb) {
             text: `✅ <b>Đã cấp key ${planLabel}</b>\n🔑 <code>${key}</code>\n💻 <code>${machineId}</code>`
         });
 
-        // Lưu vào shops.json
+        // Lưu vào shops.json + tự động unrevoke nếu máy đang bị khóa
         try {
             const msgText   = cb.message?.text || '';
             const shopMatch = msgText.match(/🏪 Cửa hàng: (.+)/);
             const userMatch = msgText.match(/👤 Telegram: (.+?) \(/);
             const shopName  = shopMatch ? shopMatch[1].trim() : '(chưa đặt tên)';
             const userName  = userMatch ? userMatch[1].trim() : '—';
+
+            // Tự động xóa khỏi revoked.json nếu đang bị khóa
+            const { list: revokedList, sha: revokedSha } = await getRevokedList();
+            if (revokedList.includes(machineId)) {
+                await ghPut('revoked.json',
+                    revokedList.filter(id => id !== machineId),
+                    revokedSha,
+                    `Unrevoke ${machineId} — new key issued`
+                );
+            }
 
             const { shops, sha } = await getShops();
             const idx   = shops.findIndex(s => s.machineId === machineId);
