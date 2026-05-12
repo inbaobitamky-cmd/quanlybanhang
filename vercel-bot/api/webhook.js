@@ -119,6 +119,18 @@ async function unrevokeShop(machineId) {
     if (shop) { shop.revoked = false; delete shop.revokedAt; await saveShops(shops, s2); }
 }
 
+async function deleteShop(machineId) {
+    // Xóa khỏi revoked.json (nếu có)
+    const { list, sha } = await getRevokedList();
+    if (list.includes(machineId)) {
+        await ghPut('revoked.json', list.filter(id => id !== machineId), sha, `Delete ${machineId} — remove from revoked`);
+    }
+    // Xóa khỏi shops.json
+    const { shops, sha: s2 } = await getShops();
+    const filtered = shops.filter(s => s.machineId !== machineId);
+    await saveShops(filtered, s2);
+}
+
 // ── Format danh sách cửa hàng ──
 const PAGE_SIZE = 5;
 function buildShopListMessage(shops, page) {
@@ -148,11 +160,17 @@ function buildShopListMessage(shops, page) {
         text += `   📅 ${shop.plan || '?'} — Hết: ${expiry}\n`;
         text += `   👤 ${shop.userName || '—'}\n\n`;
 
-        const shortName = name.length > 20 ? name.substring(0, 18) + '…' : name;
+        const shortName = name.length > 15 ? name.substring(0, 13) + '…' : name;
         if (shop.revoked) {
-            buttons.push([{ text: `🟢 Mở khóa: ${shortName}`, callback_data: `unrevoke|${shop.machineId}|${page}` }]);
+            buttons.push([
+                { text: `🟢 Mở khóa: ${shortName}`, callback_data: `unrevoke|${shop.machineId}|${page}` },
+                { text: '🗑️ Xóa', callback_data: `delete_confirm|${shop.machineId}|${page}` }
+            ]);
         } else {
-            buttons.push([{ text: `🔴 Khóa: ${shortName}`, callback_data: `revoke|${shop.machineId}|${page}` }]);
+            buttons.push([
+                { text: `🔴 Khóa: ${shortName}`, callback_data: `revoke|${shop.machineId}|${page}` },
+                { text: '🗑️ Xóa', callback_data: `delete_confirm|${shop.machineId}|${page}` }
+            ]);
         }
     });
 
@@ -470,6 +488,59 @@ async function handleCallback(cb) {
         const page      = parseInt(parts[2] || '0');
         await tg('answerCallbackQuery', { callback_query_id: cb.id, text: '🟢 Đang mở khóa...' });
         await unrevokeShop(machineId);
+        const { shops } = await getShops();
+        const { text, buttons } = buildShopListMessage(shops, page);
+        await tg('editMessageText', { chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML', text, reply_markup: { inline_keyboard: buttons } });
+        return;
+    }
+
+    // ── Xóa cửa hàng: xác nhận ──
+    if (action === 'delete_confirm' && isAdmin) {
+        const machineId = parts[1];
+        const page      = parseInt(parts[2] || '0');
+        const { shops } = await getShops();
+        const shop = shops.find(s => s.machineId === machineId);
+        const name = shop ? (shop.shopName || machineId) : machineId;
+        await tg('answerCallbackQuery', { callback_query_id: cb.id, text: '⚠️ Xác nhận xóa?' });
+        await tg('editMessageText', {
+            chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML',
+            text: `🗑️ <b>Xác nhận xóa khỏi danh sách?</b>\n\n` +
+                  `🏪 <b>${name}</b>\n💻 <code>${machineId}</code>\n\n` +
+                  `⚠️ Thao tác này sẽ:\n` +
+                  `• Xóa khỏi danh sách cửa hàng\n` +
+                  `• Xóa khỏi danh sách bị khóa (nếu có)\n` +
+                  `• <b>Không thể hoàn tác!</b>`,
+            reply_markup: { inline_keyboard: [
+                [
+                    { text: '✅ Xác nhận xóa', callback_data: `delete_yes|${machineId}|${page}` },
+                    { text: '❌ Hủy', callback_data: `delete_no|${machineId}|${page}` }
+                ]
+            ]}
+        });
+        return;
+    }
+
+    // ── Xóa cửa hàng: thực hiện ──
+    if (action === 'delete_yes' && isAdmin) {
+        const machineId = parts[1];
+        const page      = parseInt(parts[2] || '0');
+        const { shops } = await getShops();
+        const shop = shops.find(s => s.machineId === machineId);
+        const name = shop ? (shop.shopName || machineId) : machineId;
+        await tg('answerCallbackQuery', { callback_query_id: cb.id, text: '🗑️ Đang xóa...' });
+        await deleteShop(machineId);
+        const { shops: newShops } = await getShops();
+        const safePage = Math.max(0, Math.min(page, Math.ceil(newShops.length / 5) - 1));
+        const { text, buttons } = buildShopListMessage(newShops, safePage);
+        await tg('editMessageText', { chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML', text, reply_markup: { inline_keyboard: buttons } });
+        await tg('sendMessage', { chat_id: cb.message.chat.id, parse_mode: 'HTML', text: `🗑️ Đã xóa <b>${name}</b> khỏi danh sách.` });
+        return;
+    }
+
+    // ── Xóa cửa hàng: hủy → trả về danh sách ──
+    if (action === 'delete_no' && isAdmin) {
+        const page = parseInt(parts[2] || '0');
+        await tg('answerCallbackQuery', { callback_query_id: cb.id, text: '↩️ Đã hủy' });
         const { shops } = await getShops();
         const { text, buttons } = buildShopListMessage(shops, page);
         await tg('editMessageText', { chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML', text, reply_markup: { inline_keyboard: buttons } });
