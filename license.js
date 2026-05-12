@@ -335,8 +335,9 @@ function checkOnlineRevocation(machineId, forceCheck = false) {
     }
 
     return new Promise(resolve => {
-        const url = `https://raw.githubusercontent.com/${GITHUB_REVOKE_REPO}/main/revoked.json`;
-        const req = https.get(url, { headers: { 'User-Agent': 'QLBH-App' } }, res => {
+        // Thêm timestamp để bypass CDN cache của GitHub (~5 phút)
+        const url = `https://raw.githubusercontent.com/${GITHUB_REVOKE_REPO}/main/revoked.json?t=${Date.now()}`;
+        const req = https.get(url, { headers: { 'User-Agent': 'QLBH-App', 'Cache-Control': 'no-cache' } }, res => {
             let data = '';
             res.on('data', c => data += c);
             res.on('end', () => {
