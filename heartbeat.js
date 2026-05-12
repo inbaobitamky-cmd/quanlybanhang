@@ -91,8 +91,27 @@ function sendExpiryAlert({ token, chatId, shopName, machineId, daysLeft, expiry 
     try { fs.writeFileSync(_expiryAlertFile, today); } catch {}
 }
 
+// ── Gọi API checkin để tự động unrevoke nếu license còn hợp lệ ────────────
+function callCheckin(checkinUrl, machineId, token, daysLeft) {
+    if (!checkinUrl || !machineId || !token) return;
+    try {
+        const body = JSON.stringify({ machineId, secret: token, daysLeft: daysLeft !== null ? daysLeft : 99999 });
+        const url  = new URL(checkinUrl);
+        const req  = https.request({
+            hostname: url.hostname,
+            path:     url.pathname,
+            method:   'POST',
+            headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+        }, res => { res.resume(); });
+        req.on('error', () => {});
+        req.setTimeout(8000, () => req.destroy());
+        req.write(body);
+        req.end();
+    } catch {}
+}
+
 // ── Khởi động toàn bộ heartbeat system ────────────────────────────────────
-function start({ token, chatId, shopName, db, license }) {
+function start({ token, chatId, shopName, db, license, checkinUrl }) {
     const { getLicenseStatus, getMachineId, checkOnlineRevocation, invalidateLicenseCache,
             loadLicense, validateKey } = license;
     const machineId = getMachineId();
@@ -117,6 +136,9 @@ function start({ token, chatId, shopName, db, license }) {
             sendExpiryAlert({ token, chatId, shopName, machineId,
                 daysLeft: licStatus.daysLeft, expiry: licStatus.expiry });
         }
+
+        // Tự động unrevoke nếu license đang hợp lệ mà trước đó bị khóa
+        callCheckin(checkinUrl, machineId, token, licStatus.isLifetime ? null : licStatus.daysLeft);
     }
 
     // ── 2. Check revocation ngay khi khởi động (force — reset cache 24h) ──

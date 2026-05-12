@@ -799,8 +799,9 @@ app.listen(PORT, () => {
     // ── Khởi động hệ thống heartbeat + kiểm tra thu hồi ──
     const shopName = db.getSettings().shopName || '';
     heartbeat.start({
-        token:     config.BOT_TOKEN,
-        chatId:    config.DEVELOPER_CHAT_ID,
+        token:       config.BOT_TOKEN,
+        chatId:      config.DEVELOPER_CHAT_ID,
+        checkinUrl:  config.VERCEL_CHECKIN_URL,
         shopName,
         db,
         license

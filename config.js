@@ -17,8 +17,11 @@ module.exports = {
     APP_NAME: 'Quản Lý Bán Hàng',
 
     // Phiên bản hiện tại — tự động cập nhật khi publish
-    VERSION: '1.0.31',
+    VERSION: '1.0.32',
 
     // Chat ID Telegram của nhà cung cấp (để nhận yêu cầu hỗ trợ reset mật khẩu)
-    DEVELOPER_CHAT_ID: '5240628702'
+    DEVELOPER_CHAT_ID: '5240628702',
+
+    // URL Vercel checkin — client tự báo khi mở app (tự động mở khóa nếu đã được cấp key lại)
+    VERCEL_CHECKIN_URL: 'https://quanlybanhang-umber.vercel.app/api/checkin'
 };
