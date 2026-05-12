@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quân Nguyên Computer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.40.0/tabler-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="antialiased">
+<div class="wrapper">
+
+    <!-- SIDEBAR -->
+    <aside class="navbar navbar-vertical navbar-expand-lg navbar-dark qn-sidebar">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a href="/" class="navbar-brand qn-brand">
+                <div class="qn-brand-icon">
+                    <i class="ti ti-device-laptop"></i>
+                </div>
+                <div class="qn-brand-text">
+                    <span class="qn-brand-name"><%= (settings && settings.shopName && settings.shopName.trim()) ? settings.shopName.trim().toUpperCase() : 'TÊN CỬA HÀNG' %></span>
+                    <span class="qn-brand-sub">Quản lý bán hàng</span>
+                </div>
+            </a>
+            <div class="collapse navbar-collapse" id="sidebar-menu">
+                <ul class="navbar-nav pt-lg-3">
+                    <li class="nav-item ni-sell">
+                        <a class="nav-link <%= page==='sell'?'active':'' %>" href="/">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-shopping-cart"></i></span>
+                            <span class="nav-link-title">Bán hàng</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-customers">
+                        <a class="nav-link <%= page==='customers'?'active':'' %>" href="/customers">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-users"></i></span>
+                            <span class="nav-link-title">Khách hàng</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-history">
+                        <a class="nav-link <%= page==='history'?'active':'' %>" href="/history">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-receipt"></i></span>
+                            <span class="nav-link-title">Lịch sử bán</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-products">
+                        <a class="nav-link <%= page==='products'?'active':'' %>" href="/products">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-cpu"></i></span>
+                            <span class="nav-link-title">Danh sách linh kiện</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-warranty">
+                        <a class="nav-link <%= page==='warranty'?'active':'' %>" href="/warranty">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-shield-check"></i></span>
+                            <span class="nav-link-title">Tra cứu bảo hành</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-repairs">
+                        <a class="nav-link <%= page==='repairs'?'active':'' %>" href="/repairs">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-tool"></i></span>
+                            <span class="nav-link-title">Tiếp nhận sửa chữa</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-debts">
+                        <a class="nav-link <%= page==='debts'?'active':'' %>" href="/debts" style="position:relative">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-clipboard-list"></i></span>
+                            <span class="nav-link-title">Công nợ</span>
+                            <span id="debtNavBadge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#e03131;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center"></span>
+                        </a>
+                    </li>
+                    <% if (currentUser && currentUser.role === 'admin') { %>
+                    <li class="nav-item ni-suppliers">
+                        <a class="nav-link <%= page==='suppliers'?'active':'' %>" href="/suppliers">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-building-store"></i></span>
+                            <span class="nav-link-title">Nhà cung cấp</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-revenue">
+                        <a class="nav-link <%= page==='revenue'?'active':'' %>" href="/revenue">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-chart-bar"></i></span>
+                            <span class="nav-link-title">Báo cáo</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-transactions">
+                        <a class="nav-link <%= page==='transactions'?'active':'' %>" href="/transactions">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-wallet"></i></span>
+                            <span class="nav-link-title">Thu chi</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ni-staff">
+                        <a class="nav-link <%= page==='admin-users'?'active':'' %>" href="/admin/users">
+                            <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-users-group"></i></span>
+                            <span class="nav-link-title">Nhân viên</span>
+                        </a>
+                    </li>
+                    <% } %>
+                </ul>
+                <div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding:12px 8px 4px">
+                    <% if (currentUser && currentUser.role === 'admin') { %>
+                    <a class="nav-link ni-settings-link <%= page==='settings'?'active':'' %>" href="/settings" style="padding:6px 8px">
+                        <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="ti ti-settings"></i></span>
+                        <span class="nav-link-title">Cài đặt</span>
+                    </a>
+                    <% } %>
+                    <!-- Version + update badge -->
+                    <div id="sidebarVersionRow" style="padding:4px 8px 2px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById('updateBanner').style.display==='flex'&&openUpdateModal()" title="Phiên bản phần mềm">
+                        <span id="sidebarVersion" style="font-size:10px;color:rgba(255,255,255,.35)">v<%= appVersion || '1.0.0' %></span>
+                        <span id="updateDot" style="display:none;background:#f03e3e;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;animation:pulse 1.5s infinite">CÓ BẢN MỚI</span>
+                    </div>
+                    <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}</style>
+
+                    <div style="padding:8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+                        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                            <div style="width:30px;height:30px;border-radius:50%;background:<%= currentUser && currentUser.role==='admin' ? '#206bc4' : '#2f9e44' %>;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">
+                                <%= currentUser ? currentUser.displayName.charAt(0).toUpperCase() : '?' %>
+                            </div>
+                            <div style="min-width:0">
+                                <div style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= currentUser ? currentUser.displayName : '' %></div>
+                                <div style="font-size:10px;color:rgba(255,255,255,.5)"><%= currentUser && currentUser.role==='admin' ? '👑 Admin' : '👤 Nhân viên' %></div>
+                            </div>
+                        </div>
+                        <a href="/logout" title="Đăng xuất" style="color:rgba(255,255,255,.5);text-decoration:none;font-size:18px;flex-shrink:0" onmouseover="this.style.color='#f44'" onmouseout="this.style.color='rgba(255,255,255,.5)'">
+                            <i class="ti ti-logout"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="page-wrapper page-<%= page %>">
+        <div class="page-body">
+            <div class="container-xl py-3">
+                <% if (page === 'sell') { %>
+                    <%- include('sell', { products, categories, customers, currentUser }) %>
+                <% } else if (page === 'history') { %>
+                    <%- include('history', { sales, products, customers, currentUser }) %>
+                <% } else if (page === 'products') { %>
+                    <%- include('products', { products, categories, subcategories, suppliers, serials, currentUser }) %>
+                <% } else if (page === 'warranty') { %>
+                    <%- include('warranty', { warranties, currentUser }) %>
+                <% } else if (page === 'customers') { %>
+                    <%- include('customers', { customers, sales, warranties, currentUser }) %>
+                <% } else if (page === 'revenue') { %>
+                    <%- include('revenue', { currentUser }) %>
+                <% } else if (page === 'transactions') { %>
+                    <%- include('transactions', { transactions, expenseCategories, customers, currentUser }) %>
+                <% } else if (page === 'settings') { %>
+                    <%- include('settings', { settings, categories, subcategories, currentUser }) %>
+                <% } else if (page === 'suppliers') { %>
+                    <%- include('suppliers', { suppliers, currentUser }) %>
+                <% } else if (page === 'admin-users') { %>
+                    <%- include('admin-users', { users, currentUser }) %>
+                <% } else if (page === 'repairs') { %>
+                    <%- include('repairs') %>
+                <% } else if (page === 'debts') { %>
+                    <%- include('debts', { currentUser }) %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
+<script src="/js/app.js"></script>
+
+<!-- Thông báo công nợ -->
+<div id="debtNotifBar" style="display:none;position:fixed;bottom:18px;right:18px;z-index:9000;max-width:360px;cursor:pointer"
+    onclick="window.location.href='/debts'">
+</div>
+
+<!-- Banner cảnh báo license sắp hết hạn -->
+<% if (licenseStatus && licenseStatus.expiringSoon && licenseStatus.daysLeft !== null) { %>
+<div id="licenseWarnBar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#fff3cd;border-bottom:2px solid #ffc107;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <div style="font-size:13px;color:#856404;font-weight:600">
+        ⏰ Giấy phép phần mềm còn <b><%= licenseStatus.daysLeft %> ngày</b> (hết hạn <%= new Date(licenseStatus.expiry + 'T00:00:00').toLocaleDateString('vi-VN') %>). Liên hệ nhà cung cấp để gia hạn.
+    </div>
+    <button onclick="document.getElementById('licenseWarnBar').style.display='none'" style="border:none;background:none;font-size:18px;cursor:pointer;color:#856404;flex-shrink:0">✕</button>
+</div>
+<% } %>
+
+<!-- Banner thông báo có bản cập nhật -->
+<div id="updateBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:#d0ebff;border-bottom:2px solid #4da6ff;padding:9px 16px;align-items:center;justify-content:space-between;gap:12px">
+    <div style="font-size:13px;color:#1864ab;font-weight:600" id="updateBannerText"></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <% if (currentUser && currentUser.role === 'admin') { %>
+        <button onclick="openUpdateModal()" style="background:#1864ab;color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">🚀 Cập nhật ngay</button>
+        <% } %>
+        <button onclick="dismissUpdateBanner()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#1864ab;line-height:1">✕</button>
+    </div>
+</div>
+
+<!-- Modal cập nhật -->
+<div id="updateModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:16px;padding:32px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.3);margin:16px">
+        <div style="font-size:20px;font-weight:800;color:#1a1f2e;margin-bottom:6px">🚀 Cập nhật phần mềm</div>
+        <div id="updateModalSub" style="font-size:13px;color:#888;margin-bottom:20px"></div>
+
+        <!-- Thanh tiến trình -->
+        <div id="updateProgressWrap" style="display:none;margin-bottom:16px">
+            <div style="background:#e9ecef;border-radius:99px;height:10px;overflow:hidden;margin-bottom:8px">
+                <div id="updateProgressBar" style="height:100%;border-radius:99px;background:linear-gradient(90deg,#206bc4,#4da6ff);width:0%;transition:width .3s"></div>
+            </div>
+            <div id="updateProgressMsg" style="font-size:13px;color:#555;text-align:center"></div>
+        </div>
+
+        <!-- Log -->
+        <div id="updateLog" style="background:#f8f9fa;border-radius:8px;padding:12px;font-size:12px;color:#444;font-family:monospace;min-height:60px;max-height:160px;overflow-y:auto;margin-bottom:20px;display:none"></div>
+
+        <!-- Nút -->
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button id="updateCancelBtn" onclick="closeUpdateModal()" style="padding:9px 20px;border:1.5px solid #dee2e6;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600">Để sau</button>
+            <button id="updateStartBtn" onclick="startAutoUpdate()" style="padding:9px 20px;background:#206bc4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">🚀 Bắt đầu cập nhật</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Kiểm tra công nợ — cache 2 phút trong sessionStorage ──
+(async function checkDebtNotifications() {
+    try {
+        const cacheKey = 'debtNotif', cacheTimeKey = 'debtNotifAt';
+        const cached = sessionStorage.getItem(cacheKey);
+        const cachedAt = +sessionStorage.getItem(cacheTimeKey) || 0;
+        let n;
+        if (cached && Date.now() - cachedAt < 2 * 60_000) {
+            n = JSON.parse(cached);
+        } else {
+            const res = await fetch('/api/notifications/debts');
+            n = await res.json();
+            sessionStorage.setItem(cacheKey, JSON.stringify(n));
+            sessionStorage.setItem(cacheTimeKey, String(Date.now()));
+        }
+        if (!n) return;
+
+        // Badge trên menu
+        const badge = document.getElementById('debtNavBadge');
+        if (badge && (n.overdueCount > 0 || n.dueSoonCount > 0)) {
+            badge.textContent = n.overdueCount + n.dueSoonCount;
+            badge.style.display = 'inline-block';
+        }
+
+        // Notification bar góc dưới phải
+        const bar = document.getElementById('debtNotifBar');
+        if (!bar) return;
+        const msgs = [];
+        if (n.overdueCount > 0) msgs.push(`<span style="color:#e03131;font-weight:700">🔴 ${n.overdueCount} công nợ quá hạn!</span>`);
+        if (n.dueSoonCount > 0) msgs.push(`<span style="color:#b45309;font-weight:700">🟡 ${n.dueSoonCount} sắp đến hạn (≤3 ngày)</span>`);
+        if (msgs.length > 0) {
+            bar.innerHTML = `
+                <div style="background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.18);padding:14px 18px;border-left:4px solid #e03131">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:4px">⚠️ Nhắc nhở công nợ</div>
+                    ${msgs.map(m=>`<div style="font-size:13px;margin-top:2px">${m}</div>`).join('')}
+                    ${n.totalRemaining > 0 ? `<div style="font-size:12px;color:#888;margin-top:6px">Tổng tiền chưa thu: ${n.totalRemaining.toLocaleString()}đ</div>` : ''}
+                    <div style="font-size:11px;color:#206bc4;margin-top:6px">→ Click để xem danh sách công nợ</div>
+                </div>`;
+            bar.style.display = 'block';
+            // Tự ẩn sau 12 giây
+            setTimeout(() => { bar.style.display = 'none'; }, 12000);
+        }
+    } catch(e) { /* ignore */ }
+})();
+
+// ── Kiểm tra cập nhật — check mỗi 1 phút, chỉ cache khi thành công ──
+let _updateInfo = null;
+function dismissUpdateBanner() {
+    const banner = document.getElementById('updateBanner');
+    if (banner) banner.style.display = 'none';
+    if (_updateInfo && _updateInfo.version) {
+        localStorage.setItem('updateBannerDismissed', _updateInfo.version);
+    }
+}
+(async function checkUpdate() {
+    try {
+        const cacheKey = 'updateInfo_v3', cacheTimeKey = 'updateInfoAt_v3';
+        const cached   = localStorage.getItem(cacheKey);
+        const cachedAt = +localStorage.getItem(cacheTimeKey) || 0;
+        // Cache 1 phút (60_000 ms)
+        const CACHE_TTL = 60_000;
+
+        let info;
+        if (cached && Date.now() - cachedAt < CACHE_TTL) {
+            info = JSON.parse(cached);
+        } else {
+            const res = await fetch('/api/update-check');
+            info = await res.json();
+            // ✅ Chỉ cache khi API trả về kết quả hợp lệ (không cache lỗi/upToDate do network fail)
+            if (info && !info._networkError) {
+                localStorage.setItem(cacheKey, JSON.stringify(info));
+                localStorage.setItem(cacheTimeKey, String(Date.now()));
+            }
+        }
+
+        if (!info || info.upToDate) return;
+        _updateInfo = info;
+
+        const dot    = document.getElementById('updateDot');
+        const verRow = document.getElementById('sidebarVersionRow');
+        const banner = document.getElementById('updateBanner');
+        const text   = document.getElementById('updateBannerText');
+        if (!banner) return;
+
+        // Hiện dot đỏ ở sidebar dù banner bị dismiss hay không
+        if (dot) dot.style.display = 'inline-block';
+        if (verRow) verRow.title = `Có phiên bản mới v${info.version} — nhấn để cập nhật`;
+        if (verRow) verRow.style.cursor = 'pointer';
+        if (verRow) verRow.onclick = () => openUpdateModal();
+
+        // Nếu user đã bấm "Để sau" cho version này → chỉ hiện dot, không popup lại banner
+        const dismissed = localStorage.getItem('updateBannerDismissed');
+        if (dismissed === info.version) return;
+
+        const sizeMb = info.fileSize ? ` (${(info.fileSize/1048576).toFixed(1)} MB)` : '';
+        text.innerHTML = `🚀 Có phiên bản mới <b>v${info.version}</b> — bạn đang dùng <b>v${info.currentVersion}</b>${sizeMb}`;
+        banner.style.display = 'flex';
+
+        // Ghi subtitle cho modal
+        const sub = document.getElementById('updateModalSub');
+        if (sub) {
+            const notes = (info.releaseNotes || '').trim();
+            sub.innerHTML = `<b>v${info.currentVersion}</b> → <b style="color:#2f9e44">v${info.version}</b>${sizeMb}`
+                + (notes ? `<br><span style="color:#666;font-size:12px;margin-top:4px;display:block">${notes.substring(0,300)}${notes.length>300?'…':''}</span>` : '');
+        }
+    } catch(e) { /* ignore network errors */ }
+})();
+
+// Auto re-check mỗi 1 phút (kể cả khi không reload trang)
+setInterval(async () => {
+    try {
+        if (_updateInfo) return; // Đã có thông báo rồi, không cần check nữa
+        // Xóa cache cũ để force fetch mới
+        localStorage.removeItem('updateInfo_v3');
+        localStorage.removeItem('updateInfoAt_v3');
+        const res  = await fetch('/api/update-check');
+        const info = await res.json();
+        if (!info || info.upToDate || info._networkError) return;
+        _updateInfo = info;
+
+        const dot    = document.getElementById('updateDot');
+        const verRow = document.getElementById('sidebarVersionRow');
+        const banner = document.getElementById('updateBanner');
+        const text   = document.getElementById('updateBannerText');
+        if (!banner || banner.style.display === 'flex') return;
+
+        if (dot) dot.style.display = 'inline-block';
+        if (verRow) { verRow.title = `Có phiên bản mới v${info.version}`; verRow.onclick = () => openUpdateModal(); }
+
+        const dismissed = localStorage.getItem('updateBannerDismissed');
+        if (dismissed === info.version) return;
+
+        const sizeMb = info.fileSize ? ` (${(info.fileSize/1048576).toFixed(1)} MB)` : '';
+        text.innerHTML = `🚀 Có phiên bản mới <b>v${info.version}</b> — bạn đang dùng <b>v${info.currentVersion}</b>${sizeMb}`;
+        banner.style.display = 'flex';
+
+        const sub = document.getElementById('updateModalSub');
+        if (sub) {
+            const notes = (info.releaseNotes || '').trim();
+            sub.innerHTML = `<b>v${info.currentVersion}</b> → <b style="color:#2f9e44">v${info.version}</b>${sizeMb}`
+                + (notes ? `<br><span style="color:#666;font-size:12px;margin-top:4px;display:block">${notes.substring(0,300)}${notes.length>300?'…':''}</span>` : '');
+        }
+    } catch(e) {}
+}, 60_000);
+
+// ── Modal cập nhật ──
+function openUpdateModal() {
+    document.getElementById('updateModal').style.display = 'flex';
+    document.getElementById('updateLog').style.display = 'none';
+    document.getElementById('updateProgressWrap').style.display = 'none';
+    document.getElementById('updateStartBtn').disabled = false;
+    document.getElementById('updateStartBtn').textContent = '🚀 Bắt đầu cập nhật';
+    document.getElementById('updateCancelBtn').textContent = 'Để sau';
+}
+function closeUpdateModal() {
+    document.getElementById('updateModal').style.display = 'none';
+}
+
+function startAutoUpdate() {
+    const startBtn  = document.getElementById('updateStartBtn');
+    const cancelBtn = document.getElementById('updateCancelBtn');
+    const logEl     = document.getElementById('updateLog');
+    const progWrap  = document.getElementById('updateProgressWrap');
+    const progBar   = document.getElementById('updateProgressBar');
+    const progMsg   = document.getElementById('updateProgressMsg');
+
+    startBtn.disabled = true;
+    startBtn.textContent = '⏳ Đang xử lý...';
+    cancelBtn.textContent = 'Đóng';
+    logEl.style.display = 'block';
+    progWrap.style.display = 'block';
+    logEl.innerHTML = '';
+
+    function log(msg, color) {
+        const line = document.createElement('div');
+        line.style.color = color || '#444';
+        line.textContent = '› ' + msg;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    const es = new EventSource('/api/update/download');
+
+    es.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+
+        if (d.step === 'check')     { log(d.msg); }
+        if (d.step === 'found')     { log('✅ ' + d.msg, '#2f9e44'); }
+        if (d.step === 'progress')  {
+            progBar.style.width = d.pct + '%';
+            progMsg.textContent = d.msg;
+        }
+        if (d.step === 'preparing') { log(d.msg); progBar.style.width = '100%'; }
+        if (d.step === 'done') {
+            log('✅ ' + d.msg, '#2f9e44');
+            log('🔄 Đang kết nối lại...', '#206bc4');
+            progMsg.textContent = 'Hoàn tất! Phần mềm sẽ tự khởi động lại...';
+            es.close();
+
+            // Đợi 6s (bat chờ 3s + move + start exe) rồi mới bắt đầu thử kết nối lại
+            let attempts = 0;
+            const maxAttempts = 45; // tối đa ~90 giây
+            setTimeout(function waitForServer() {
+                attempts++;
+                // Dùng Image để tránh lỗi đỏ trong console (Image load không log network error)
+                const img = new Image();
+                img.onload = img.onerror = function(e) {
+                    if (e.type === 'load' || (this.naturalWidth === 0 && e.type === 'error')) {
+                        // Server có thể đang lên (favicon trả về bất kỳ response)
+                        // Dùng fetch để xác nhận
+                        fetch('/login', { cache: 'no-store' })
+                            .then(r => { if (r.ok || r.status === 302) location.href = '/login'; })
+                            .catch(() => {
+                                if (attempts < maxAttempts) setTimeout(waitForServer, 2000);
+                                else { progMsg.textContent = '⚠️ Không kết nối được. Mở lại phần mềm thủ công.'; }
+                            });
+                    } else {
+                        if (attempts < maxAttempts) setTimeout(waitForServer, 2000);
+                        else { progMsg.textContent = '⚠️ Không kết nối được. Mở lại phần mềm thủ công.'; }
+                    }
+                };
+                img.src = '/favicon.ico?_=' + Date.now();
+            }, 6000);
+        }
+        if (d.step === 'done_manual') {
+            log(d.msg, '#b45309');
+            progMsg.textContent = 'Chế độ dev — thay file thủ công.';
+            es.close();
+            startBtn.disabled = false;
+            startBtn.textContent = 'Đóng';
+            startBtn.onclick = closeUpdateModal;
+        }
+        if (d.step === 'error') {
+            log('❌ ' + d.msg, '#e03131');
+            progMsg.textContent = 'Cập nhật thất bại.';
+            es.close();
+            startBtn.disabled = false;
+            startBtn.textContent = '🔄 Thử lại';
+            startBtn.onclick = startAutoUpdate;
+        }
+    };
+
+    es.onerror = () => {
+        es.close();
+        log('❌ Mất kết nối với server.', '#e03131');
+        startBtn.disabled = false;
+        startBtn.textContent = '🔄 Thử lại';
+        startBtn.onclick = startAutoUpdate;
+    };
+}
+</script>
+<script>
+// Poll license status mỗi 15 giây — phát hiện khóa/mở khóa tức thì
+(function() {
+    setInterval(function() {
+        fetch('/api/license-status')
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (!d.active || d.revoked) {
+                    window.location.href = '/activate';
+                }
+            }).catch(function(){});
+    }, 15000);
+})();
+</script>
+</body>
+</html>

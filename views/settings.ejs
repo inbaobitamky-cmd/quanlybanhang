@@ -1,0 +1,608 @@
+<div class="app-header">
+    <h2><i class="ti ti-settings"></i>Cài đặt</h2>
+</div>
+
+<div class="settings-panel">
+    <h3>Thông tin cửa hàng</h3>
+    <form onsubmit="saveSettings(event)">
+        <div class="form-group">
+            <label>Tên cửa hàng</label>
+            <input type="text" id="shopName" value="<%= settings.shopName || '' %>">
+        </div>
+        <div class="form-group">
+            <label>Địa chỉ</label>
+            <input type="text" id="shopAddress" value="<%= settings.shopAddress || '' %>">
+        </div>
+        <div class="form-group">
+            <label>Số điện thoại</label>
+            <input type="text" id="shopPhone" value="<%= settings.shopPhone || '' %>">
+        </div>
+        <button type="submit" class="btn btn-primary">Lưu cài đặt</button>
+    </form>
+</div>
+
+<div class="settings-panel">
+    <h3>💾 Sao lưu dữ liệu</h3>
+    <p style="color:#666;margin-bottom:15px">Dữ liệu tự động backup <strong>mỗi 1 tiếng</strong>, giữ 7 ngày gần nhất. Nếu file bị hỏng, app tự động khôi phục từ backup.</p>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="chooseBackupFolder()" style="white-space:nowrap">📂 Chọn thư mục & Backup</button>
+        <button class="btn btn-primary" onclick="doBackupDefault()">💾 Backup mặc định</button>
+    </div>
+    <span id="backupStatus" style="display:block;margin-top:6px;color:#666;font-size:14px"></span>
+</div>
+
+<div class="settings-panel">
+    <h3>📂 Quản lý danh mục & danh mục con</h3>
+    <button class="btn btn-primary" onclick="openCategoryModal()">+ Thêm danh mục chính</button>
+    
+    <div class="categories-tree">
+        <% categories.forEach(cat => { 
+            const subcats = subcategories.filter(s => s.categoryId == cat.id);
+        %>
+        <div class="category-group">
+            <div class="category-main">
+                <span class="badge" style="background:<%= cat.color %>"><%= cat.name %></span>
+                <div class="category-actions">
+                    <button class="btn-icon" onclick="openSubcategoryModal(<%= cat.id %>)" title="Thêm danh mục con">➕</button>
+                    <button class="btn-edit" onclick='editCategory(<%= JSON.stringify(cat) %>)'>✏️</button>
+                    <button class="btn-delete" onclick="deleteCategory(<%= cat.id %>)">🗑️</button>
+                </div>
+            </div>
+            
+            <% if (subcats.length > 0) { %>
+            <div class="subcategories-list">
+                <% subcats.forEach(subcat => { %>
+                <div class="subcategory-item">
+                    <span class="sub-badge" style="background:<%= subcat.color %>">└─ <%= subcat.name %></span>
+                    <div class="subcat-actions">
+                        <button class="btn-edit-sm" onclick='editSubcategory(<%= JSON.stringify(subcat) %>)' title="Sửa">✏️</button>
+                        <button class="btn-delete-sm" onclick="deleteSubcategory(<%= subcat.id %>)" title="Xóa">🗑️</button>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+            <% } else { %>
+            <div class="subcategories-empty">
+                <small style="color:#999">Chưa có danh mục con</small>
+            </div>
+            <% } %>
+        </div>
+        <% }); %>
+    </div>
+</div>
+
+<!-- ========= TELEGRAM ========= -->
+<div class="settings-panel">
+    <h3>🤖 Thông báo Telegram</h3>
+    <p style="color:#666;font-size:13px;margin-bottom:16px">
+        Nhận thông báo tự động qua Telegram: đơn hàng mới, công nợ sắp hạn (8:00 sáng), báo cáo doanh thu (0:05 đêm).
+    </p>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600">
+            <input type="checkbox" id="tgEnabled" <%= settings.telegramEnabled ? 'checked' : '' %>
+                style="width:16px;height:16px" onchange="tgToggleUI()">
+            Bật thông báo Telegram
+        </label>
+    </div>
+
+    <div id="tgConfigPanel" style="display:<%= settings.telegramEnabled ? '' : 'none' %>">
+        <!-- Hướng dẫn -->
+        <div style="background:#f0f6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;line-height:1.9">
+            <b>📋 Hướng dẫn nhanh (2 bước):</b><br>
+            1️⃣ Mở Telegram → tìm <code>@BotFather</code> → gõ <code>/newbot</code> → đặt tên → copy <b>Bot Token</b> dán vào ô bên dưới<br>
+            2️⃣ Mở bot vừa tạo → nhắn bất kỳ tin gì (ví dụ: "xin chào") → quay lại đây nhấn <b>"🔍 Tự lấy ID"</b> — xong!
+        </div>
+
+        <div style="margin-bottom:14px">
+            <label style="font-size:13px;font-weight:600;color:#444;display:block;margin-bottom:6px">Bot Token</label>
+            <input type="text" id="tgToken" value="<%= settings.telegramBotToken || '' %>"
+                placeholder="1234567890:AAExxxxxxx..."
+                style="width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:monospace;outline:none">
+        </div>
+
+        <div style="margin-bottom:14px">
+            <label style="font-size:13px;font-weight:600;color:#444;display:block;margin-bottom:6px">Chat ID người nhận 1 <span style="font-weight:400;color:#888">(bắt buộc)</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="tgChatId" value="<%= settings.telegramChatId || '' %>"
+                    placeholder="Nhấn nút bên cạnh để tự lấy..."
+                    style="flex:1;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:monospace;outline:none">
+                <button onclick="autoFetchChatId('tgChatId','btnFetchChatId','tgChatIdResult')" id="btnFetchChatId"
+                    style="white-space:nowrap;padding:9px 16px;background:#f0f6ff;border:1.5px solid #bfdbfe;color:#206bc4;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">
+                    🔍 Tự lấy ID
+                </button>
+            </div>
+            <div style="font-size:11px;color:#888;margin-top:5px">
+                💡 Nhắn bất kỳ tin gì cho bot trên Telegram, rồi nhấn <b>"Tự lấy ID"</b> — sẽ tự điền vào.
+            </div>
+            <div id="tgChatIdResult" style="font-size:13px;margin-top:6px;display:none"></div>
+        </div>
+
+        <div style="margin-bottom:14px">
+            <label style="font-size:13px;font-weight:600;color:#444;display:block;margin-bottom:6px">Chat ID người nhận 2 <span style="font-weight:400;color:#888">(không bắt buộc — ví dụ: quản lý/chủ)</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="tgChatId2" value="<%= settings.telegramChatId2 || '' %>"
+                    placeholder="Để trống nếu chỉ cần 1 người nhận..."
+                    style="flex:1;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:monospace;outline:none">
+                <button onclick="autoFetchChatId('tgChatId2','btnFetchChatId2','tgChatId2Result')" id="btnFetchChatId2"
+                    style="white-space:nowrap;padding:9px 16px;background:#f0f6ff;border:1.5px solid #bfdbfe;color:#206bc4;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">
+                    🔍 Tự lấy ID
+                </button>
+            </div>
+            <div style="font-size:11px;color:#888;margin-top:5px">
+                💡 Nhờ người nhận 2 (ví dụ: Tuấn) <b>nhắn bất kỳ tin gì cho bot</b> rồi bạn nhấn <b>"Tự lấy ID"</b> ngay sau đó — hệ thống lấy tin nhắn cuối cùng gửi đến bot.
+            </div>
+            <div id="tgChatId2Result" style="font-size:13px;margin-top:6px;display:none"></div>
+        </div>
+
+        <div style="margin-bottom:14px">
+            <label style="font-size:13px;font-weight:600;color:#444;display:block;margin-bottom:6px">
+                Username của bot <span style="font-weight:400;color:#888">(không bắt buộc — để tạo link nhanh)</span>
+            </label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <span style="color:#888;font-size:14px">@</span>
+                <input type="text" id="tgUsername" value="<%= (settings.telegramBotUsername || '').replace('@','') %>"
+                    placeholder="TenBot_bot"
+                    style="width:240px;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:monospace;outline:none"
+                    oninput="updateBotLink()">
+                <span id="tgBotLink" style="font-size:13px;color:#206bc4"></span>
+            </div>
+        </div>
+
+        <!-- Nút hành động -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <button onclick="testTelegram()" style="background:#206bc4;color:#fff;border:none;border-radius:8px;padding:9px 18px;cursor:pointer;font-weight:600;font-size:13px">
+                🔔 Test kết nối
+            </button>
+            <button onclick="sendDebtNow()" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:9px 18px;cursor:pointer;font-weight:600;font-size:13px">
+                ⚠️ Gửi nhắc công nợ ngay
+            </button>
+            <button onclick="sendRevenueNow()" style="background:#2f9e44;color:#fff;border:none;border-radius:8px;padding:9px 18px;cursor:pointer;font-weight:600;font-size:13px">
+                📊 Gửi báo cáo doanh thu ngay
+            </button>
+        </div>
+        <div id="tgStatus" style="font-size:13px;min-height:20px"></div>
+
+        <!-- Lịch tự động -->
+        <div style="background:#f8f9fa;border-radius:8px;padding:12px;font-size:12px;color:#666;margin-top:8px">
+            ⏰ <b>Lịch tự động:</b> Nhắc công nợ lúc <b>08:00 sáng</b> hàng ngày &nbsp;|&nbsp; Báo cáo doanh thu lúc <b>00:05 đêm</b> hàng ngày
+        </div>
+    </div>
+
+    <div style="margin-top:16px">
+        <button onclick="saveTelegramSettings()" class="btn btn-primary">💾 Lưu cài đặt Telegram</button>
+    </div>
+</div>
+
+<!-- Modal Category -->
+<div id="categoryModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="catModalTitle">Thêm danh mục chính</h3>
+            <button class="btn-close" onclick="closeCategoryModal()">×</button>
+        </div>
+        <form onsubmit="saveCategory(event)">
+            <input type="hidden" id="catId">
+            <div class="form-group">
+                <label>Tên danh mục *</label>
+                <input type="text" id="catName" required>
+            </div>
+            <div class="form-group">
+                <label>Màu</label>
+                <input type="color" id="catColor" value="#3498db">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeCategoryModal()">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Subcategory -->
+<div id="subcategoryModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="subcatModalTitle">Thêm danh mục con</h3>
+            <button class="btn-close" onclick="closeSubcategoryModal()">×</button>
+        </div>
+        <form onsubmit="saveSubcategory(event)">
+            <input type="hidden" id="subcatId">
+            <input type="hidden" id="subcatCategoryId">
+            
+            <div class="form-group">
+                <label>Danh mục chính</label>
+                <select id="subcatParent" required>
+                    <% categories.forEach(cat => { %>
+                    <option value="<%= cat.id %>"><%= cat.name %></option>
+                    <% }); %>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Tên danh mục con *</label>
+                <input type="text" id="subcatName" required placeholder="VD: Intel Core i5 Gen 12">
+            </div>
+            
+            <div class="form-group">
+                <label>Màu</label>
+                <input type="color" id="subcatColor" value="#3498db">
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeSubcategoryModal()">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+async function chooseBackupFolder() {
+    const status = document.getElementById('backupStatus');
+    if (!window.showDirectoryPicker) {
+        status.textContent = '⚠️ Trình duyệt không hỗ trợ chọn thư mục. Dùng Chrome mới nhất.';
+        status.style.color = '#e67e22';
+        return;
+    }
+    try {
+        const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        status.textContent = 'Đang backup...';
+        status.style.color = '#666';
+
+        // Tải file backup từ server
+        const res = await fetch('/api/backup/download');
+        const filename = res.headers.get('X-Filename') || ('data_backup_' + new Date().toISOString().replace(/:/g,'-').split('.')[0] + '.json');
+        const blob = await res.blob();
+
+        // Lưu vào thư mục được chọn
+        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+
+        // Đồng thời backup vào thư mục mặc định (backups/)
+        await fetch('/api/backup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ destDir: null }) });
+
+        status.textContent = '✅ Đã backup 2 nơi: ' + dirHandle.name + '/' + filename + ' + thư mục backups/ mặc định';
+        status.style.color = '#27ae60';
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            status.textContent = '';
+        } else {
+            status.textContent = '❌ ' + err.message;
+            status.style.color = '#e74c3c';
+        }
+    }
+}
+
+async function doBackupDefault() {
+    const status = document.getElementById('backupStatus');
+    status.textContent = 'Đang backup...';
+    status.style.color = '#666';
+    try {
+        const res = await fetch('/api/backup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ destDir: null }) });
+        const data = await res.json();
+        if (data.success) {
+            status.textContent = '✅ Backup thành công! File: ' + data.file;
+            status.style.color = '#27ae60';
+        } else {
+            status.textContent = '❌ Lỗi: ' + data.error;
+            status.style.color = '#e74c3c';
+        }
+    } catch (err) {
+        status.textContent = '❌ ' + err.message;
+        status.style.color = '#e74c3c';
+    }
+}
+
+// ============== BACKUP PATH 2 ==============
+async function saveBackupPath2() {
+    const p = document.getElementById('backupPath2').value.trim();
+    const status = document.getElementById('backupStatus');
+    if (!p) { status.textContent = '⚠️ Chưa nhập đường dẫn'; status.style.color = '#e67700'; return; }
+    await saveSettingsSilent();
+    status.textContent = '✅ Đã lưu! App sẽ tự backup vào: ' + p + ' mỗi tiếng.';
+    status.style.color = '#27ae60';
+}
+
+async function clearBackupPath2() {
+    document.getElementById('backupPath2').value = '';
+    await saveSettingsSilent();
+    document.getElementById('backupStatus').textContent = '✅ Đã xóa ổ backup thứ 2';
+    document.getElementById('backupStatus').style.color = '#666';
+}
+
+function collectSettings() {
+    return {
+        shopName: document.getElementById('shopName').value,
+        shopAddress: document.getElementById('shopAddress').value,
+        shopPhone: document.getElementById('shopPhone').value,
+        backupPath2: (document.getElementById('backupPath2') || {}).value || '',
+        telegramEnabled: document.getElementById('tgEnabled').checked,
+        telegramBotToken: document.getElementById('tgToken').value.trim(),
+        telegramChatId: document.getElementById('tgChatId').value.trim(),
+        telegramChatId2: document.getElementById('tgChatId2').value.trim(),
+        telegramBotUsername: document.getElementById('tgUsername').value.trim()
+    };
+}
+
+async function saveSettingsSilent() {
+    await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(collectSettings())
+    });
+}
+
+// ============== SETTINGS ==============
+async function saveSettings(e) {
+    e.preventDefault();
+    try {
+        await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(collectSettings())
+        });
+        // Reload để sidebar cập nhật tên cửa hàng
+        window.location.reload();
+    } catch (error) {
+        alert('❌ Lỗi: ' + error.message);
+    }
+}
+
+// ============== CATEGORY ==============
+function openCategoryModal() {
+    document.getElementById('categoryModal').classList.add('active');
+    document.getElementById('catModalTitle').textContent = 'Thêm danh mục chính';
+    document.getElementById('catId').value = '';
+    document.getElementById('catName').value = '';
+    document.getElementById('catColor').value = '#3498db';
+}
+
+function closeCategoryModal() {
+    document.getElementById('categoryModal').classList.remove('active');
+}
+
+function editCategory(cat) {
+    document.getElementById('categoryModal').classList.add('active');
+    document.getElementById('catModalTitle').textContent = 'Sửa danh mục';
+    document.getElementById('catId').value = cat.id;
+    document.getElementById('catName').value = cat.name;
+    document.getElementById('catColor').value = cat.color;
+}
+
+async function saveCategory(e) {
+    e.preventDefault();
+    const id = document.getElementById('catId').value;
+    const data = {
+        name: document.getElementById('catName').value,
+        color: document.getElementById('catColor').value
+    };
+    
+    try {
+        const url = id ? `/api/categories/${id}` : '/api/categories';
+        const method = id ? 'PUT' : 'POST';
+        await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        alert('✅ Đã lưu!');
+        window.location.reload();
+    } catch (error) {
+        alert('❌ Lỗi: ' + error.message);
+    }
+}
+
+async function deleteCategory(id) {
+    if (!confirm('Xóa danh mục này? (Các danh mục con cũng sẽ bị xóa)')) return;
+    try {
+        await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+        alert('✅ Đã xóa!');
+        window.location.reload();
+    } catch (error) {
+        alert('❌ Lỗi: ' + error.message);
+    }
+}
+
+// ============== SUBCATEGORY ==============
+function openSubcategoryModal(categoryId) {
+    document.getElementById('subcategoryModal').classList.add('active');
+    document.getElementById('subcatModalTitle').textContent = 'Thêm danh mục con';
+    document.getElementById('subcatId').value = '';
+    document.getElementById('subcatCategoryId').value = categoryId;
+    document.getElementById('subcatParent').value = categoryId;
+    document.getElementById('subcatName').value = '';
+    document.getElementById('subcatColor').value = '#3498db';
+}
+
+function closeSubcategoryModal() {
+    document.getElementById('subcategoryModal').classList.remove('active');
+}
+
+function editSubcategory(subcat) {
+    document.getElementById('subcategoryModal').classList.add('active');
+    document.getElementById('subcatModalTitle').textContent = 'Sửa danh mục con';
+    document.getElementById('subcatId').value = subcat.id;
+    document.getElementById('subcatCategoryId').value = subcat.categoryId;
+    document.getElementById('subcatParent').value = subcat.categoryId;
+    document.getElementById('subcatName').value = subcat.name;
+    document.getElementById('subcatColor').value = subcat.color;
+}
+
+async function saveSubcategory(e) {
+    e.preventDefault();
+    const id = document.getElementById('subcatId').value;
+    const data = {
+        categoryId: document.getElementById('subcatParent').value,
+        name: document.getElementById('subcatName').value,
+        color: document.getElementById('subcatColor').value
+    };
+    
+    try {
+        const url = id ? `/api/subcategories/${id}` : '/api/subcategories';
+        const method = id ? 'PUT' : 'POST';
+        await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        alert('✅ Đã lưu!');
+        window.location.reload();
+    } catch (error) {
+        alert('❌ Lỗi: ' + error.message);
+    }
+}
+
+async function deleteSubcategory(id) {
+    if (!confirm('Xóa danh mục con này?')) return;
+    try {
+        await fetch(`/api/subcategories/${id}`, { method: 'DELETE' });
+        alert('✅ Đã xóa!');
+        window.location.reload();
+    } catch (error) {
+        alert('❌ Lỗi: ' + error.message);
+    }
+}
+
+// ============== TELEGRAM ==============
+function tgToggleUI() {
+    const enabled = document.getElementById('tgEnabled').checked;
+    document.getElementById('tgConfigPanel').style.display = enabled ? '' : 'none';
+}
+
+function updateBotLink() {
+    const username = document.getElementById('tgUsername').value.trim().replace('@','');
+    const el = document.getElementById('tgBotLink');
+    if (username) {
+        el.innerHTML = `→ <a href="https://t.me/${username}" target="_blank" style="color:#206bc4">t.me/${username}</a>`;
+    } else {
+        el.innerHTML = '';
+    }
+}
+// Init bot link on load
+updateBotLink();
+
+async function saveTelegramSettings() {
+    const status = document.getElementById('tgStatus');
+    status.textContent = 'Đang lưu...'; status.style.color = '#666';
+    try {
+        await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(collectSettings())
+        });
+        status.textContent = '✅ Đã lưu cài đặt Telegram!';
+        status.style.color = '#2f9e44';
+    } catch(e) {
+        status.textContent = '❌ ' + e.message;
+        status.style.color = '#e03131';
+    }
+}
+
+async function autoFetchChatId(inputId, btnId, resultId) {
+    inputId  = inputId  || 'tgChatId';
+    btnId    = btnId    || 'btnFetchChatId';
+    resultId = resultId || 'tgChatIdResult';
+    const token = document.getElementById('tgToken').value.trim();
+    const btn = document.getElementById(btnId);
+    const resultEl = document.getElementById(resultId);
+    if (!token) {
+        resultEl.style.display = '';
+        resultEl.style.color = '#e67e22';
+        resultEl.textContent = '⚠️ Nhập Bot Token trước!';
+        return;
+    }
+    btn.textContent = '⏳ Đang lấy...';
+    btn.disabled = true;
+    resultEl.style.display = 'none';
+    try {
+        const res = await fetch('/api/telegram/get-chat-id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            document.getElementById(inputId).value = data.chatId;
+            resultEl.style.display = '';
+            resultEl.style.color = '#2f9e44';
+            resultEl.innerHTML = `✅ Đã lấy Chat ID: <b>${data.chatId}</b>${data.name ? ' — ' + data.name : ''}${data.username ? ' (@' + data.username + ')' : ''}`;
+        } else {
+            resultEl.style.display = '';
+            resultEl.style.color = '#e03131';
+            resultEl.textContent = '❌ ' + (data.error || 'Không lấy được');
+        }
+    } catch(e) {
+        resultEl.style.display = '';
+        resultEl.style.color = '#e03131';
+        resultEl.textContent = '❌ ' + e.message;
+    }
+    btn.textContent = '🔍 Tự lấy ID';
+    btn.disabled = false;
+}
+
+async function testTelegram() {
+    const status = document.getElementById('tgStatus');
+    const token = document.getElementById('tgToken').value.trim();
+    const chatId = document.getElementById('tgChatId').value.trim();
+    if (!token || !chatId) { status.textContent = '⚠️ Nhập Bot Token và Chat ID trước!'; status.style.color = '#e67e22'; return; }
+    status.textContent = '⏳ Đang gửi tin thử...'; status.style.color = '#666';
+    try {
+        const res = await fetch('/api/telegram/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, chatId })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            status.textContent = '✅ Kết nối thành công! Kiểm tra Telegram của bạn.';
+            status.style.color = '#2f9e44';
+        } else {
+            status.textContent = '❌ Lỗi: ' + (data.description || data.error || 'Không rõ');
+            status.style.color = '#e03131';
+        }
+    } catch(e) {
+        status.textContent = '❌ ' + e.message;
+        status.style.color = '#e03131';
+    }
+}
+
+async function sendDebtNow() {
+    const status = document.getElementById('tgStatus');
+    status.textContent = '⏳ Đang gửi nhắc công nợ...'; status.style.color = '#666';
+    await saveTelegramSettings();
+    const res = await fetch('/api/telegram/send-debt-now', { method: 'POST' });
+    const data = await res.json();
+    status.textContent = data.ok ? '✅ Đã gửi nhắc công nợ!' : '⚠️ Không có công nợ sắp/quá hạn để gửi';
+    status.style.color = data.ok ? '#2f9e44' : '#e67e22';
+}
+
+async function sendRevenueNow() {
+    const status = document.getElementById('tgStatus');
+    status.textContent = '⏳ Đang gửi báo cáo...'; status.style.color = '#666';
+    await saveTelegramSettings();
+    const res = await fetch('/api/telegram/send-revenue-now', { method: 'POST' });
+    const data = await res.json();
+    status.textContent = data.ok ? '✅ Đã gửi báo cáo doanh thu!' : '❌ Lỗi gửi';
+    status.style.color = data.ok ? '#2f9e44' : '#e03131';
+}
+</script>
+
+<style>
+.categories-tree {margin-top:16px;}
+.category-group {margin-bottom:10px;}
+.category-main {display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f6f8fb;border-radius:7px;border:1px solid #e6ebf1;}
+.category-actions {display:flex;gap:4px;}
+.btn-edit {background:none;border:none;cursor:pointer;font-size:15px;padding:4px 7px;border-radius:5px;transition:background .15s;}
+.btn-edit:hover {background:#e8f3ff;}
+.btn-delete {background:none;border:none;cursor:pointer;font-size:15px;padding:4px 7px;border-radius:5px;color:#d63939;transition:background .15s;}
+.btn-delete:hover {background:#ffe5e5;}
+.subcategories-list {padding:4px 0 4px 20px;}
+.subcategory-item {display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:#fff;border-radius:6px;border:1px solid #e6ebf1;margin-bottom:5px;}
+.subcat-actions {display:flex;gap:4px;}
+.badge {display:inline-block;padding:4px 11px;border-radius:6px;font-size:13px;font-weight:600;color:white;}
+.modal-content form {padding:22px;}
+</style>

@@ -130,6 +130,35 @@ app.use(session({
     cookie: { maxAge: 8 * 60 * 60 * 1000 }
 }));
 
+// ============== SERVER-SIDE REVOCATION POLL (mỗi 1 phút) ==============
+// Tách riêng với heartbeat — check nhanh hơn, chỉ để phát hiện revoke/unrevoke
+(function startRevocationWatcher() {
+    const fs2 = require('fs'), path2 = require('path'), os2 = require('os');
+    const appData = process.env.APPDATA || path2.join(os2.homedir(), 'AppData', 'Roaming');
+    const checkFile = typeof process.pkg !== 'undefined'
+        ? path2.join(appData, 'QuanLyBanHang', 'license.check')
+        : path2.join(__dirname, 'license.check');
+
+    setInterval(() => {
+        const st = license.getLicenseStatus();
+        // Chạy khi active HOẶC khi đang bị block (để tự phục hồi)
+        if (!st.active && !st.revoked) return;
+        try { fs2.writeFileSync(checkFile, '0'); } catch {}
+        const machineId = license.getMachineId();
+        license.checkOnlineRevocation(machineId).then(notRevoked => {
+            if (!notRevoked && !st.revoked) {
+                // Nếu license local vẫn hợp lệ (key đúng + còn hạn) → không block
+                // Tránh trường hợp admin cấp key mới nhưng GitHub chưa kịp cập nhật
+                const lic = license.loadLicense();
+                if (lic && license.validateKey(lic)) return;
+                license.blockLicense();
+            } else if (notRevoked && st.revoked) {
+                license.unblockLicense(); // phát hiện được mở khóa → restore ngay
+            }
+        }).catch(() => {});
+    }, 60 * 1000); // mỗi 1 phút
+})();
+
 // ============== LICENSE MIDDLEWARE ==============
 const _licenseExcluded = ['/activate', '/api/activate', '/login', '/logout'];
 app.use((req, res, next) => {
@@ -200,6 +229,33 @@ app.get('/activate', (req, res) => {
     const machineIdPayload = machineId;
 
     res.render('activate', { status, machineId, machineInfo, botUsername, machineIdPayload });
+});
+
+// Trạng thái license — dùng để trang /activate polling tự động redirect khi được mở khóa
+// Khi đang bị revoked: force check GitHub ngay để phát hiện unrevoke tức thì
+app.get('/api/license-status', (req, res) => {
+    const st = license.getLicenseStatus();
+    if (!st.revoked) {
+        return res.json({ active: st.active, revoked: false });
+    }
+    // Đang bị block → force check online ngay (reset cache)
+    const fs2 = require('fs'), path2 = require('path'), os2 = require('os');
+    const appData = process.env.APPDATA || path2.join(os2.homedir(), 'AppData', 'Roaming');
+    const checkFile = typeof process.pkg !== 'undefined'
+        ? path2.join(appData, 'QuanLyBanHang', 'license.check')
+        : path2.join(__dirname, 'license.check');
+    try { fs2.writeFileSync(checkFile, '0'); } catch {} // reset cache → force check
+
+    const machineId = license.getMachineId();
+    license.checkOnlineRevocation(machineId).then(notRevoked => {
+        if (notRevoked) {
+            license.unblockLicense(); // xóa license.blocked → mở khóa ngay
+            const newSt = license.getLicenseStatus();
+            res.json({ active: newSt.active, revoked: false });
+        } else {
+            res.json({ active: false, revoked: true });
+        }
+    }).catch(() => res.json({ active: st.active, revoked: true }));
 });
 
 // Bot admin lấy machine info từ cache (gọi nội bộ từ admin-panel nếu cùng máy)
@@ -323,7 +379,7 @@ app.get('/products', requireAuth, (req, res) => {
 });
 
 app.get('/history', requireAuth, (req, res) => {
-    res.render('index', { page: 'history', ...baseData(req) });
+    res.render('index', { page: 'history', repairs: db.getRepairs(), ...baseData(req) });
 });
 
 app.get('/warranty', requireAuth, (req, res) => {
@@ -373,6 +429,39 @@ app.get('/suppliers', requireAdminPage, (req, res) => {
 
 app.get('/admin/users', requireAdminPage, (req, res) => {
     res.render('index', { page: 'admin-users', users: db.getUsers(), ...baseData(req) });
+});
+
+app.get('/repairs', requireAuth, (req, res) => {
+    res.render('index', { page: 'repairs', ...baseData(req) });
+});
+
+// ============== API REPAIRS ==============
+app.get('/api/repairs', requireAuth, (req, res) => {
+    const { q, status } = req.query;
+    res.json(db.searchRepairs({ q, status }));
+});
+
+app.post('/api/repairs', requireAuth, (req, res) => {
+    const repair = db.addRepair({ ...req.body, receivedBy: req.session.user.displayName });
+    res.json({ ok: true, repair });
+});
+
+app.put('/api/repairs/:id', requireAuth, (req, res) => {
+    const repair = db.updateRepair(req.params.id, req.body);
+    if (!repair) return res.json({ ok: false, error: 'Không tìm thấy phiếu' });
+    res.json({ ok: true, repair });
+});
+
+app.post('/api/repairs/:id/return', requireAuth, (req, res) => {
+    const result = db.returnRepair(req.params.id, { ...req.body, returnedBy: req.session.user.displayName });
+    if (result.error) return res.json({ ok: false, error: result.error });
+    res.json({ ok: true, repair: result });
+});
+
+app.post('/api/repairs/:id/cancel', requireAuth, (req, res) => {
+    const result = db.cancelRepair(req.params.id);
+    if (result.error) return res.json({ ok: false, error: result.error });
+    res.json({ ok: true });
 });
 
 app.get('/debts', requireAuth, (req, res) => {
@@ -497,12 +586,27 @@ app.post('/api/settings', requireAdmin, (req, res) => {
 });
 
 // API Update check
+// Server-side cache cho update check — 5 phút, tránh spam GitHub API
+let _updateCheckCache = null;
+let _updateCheckAt    = 0;
+const UPDATE_CHECK_TTL = 5 * 60_000; // 5 phút
+
 app.get('/api/update-check', requireAuth, async (req, res) => {
     try {
+        const now = Date.now();
+        // Dùng cache nếu còn hiệu lực
+        if (_updateCheckCache !== null && now - _updateCheckAt < UPDATE_CHECK_TTL) {
+            return res.json(_updateCheckCache);
+        }
         const info = await updater.checkForUpdate();
-        res.json(info || { upToDate: true });
+        const result = info || { upToDate: true };
+        // Chỉ cache kết quả hợp lệ (không cache lỗi)
+        _updateCheckCache = result;
+        _updateCheckAt    = now;
+        res.json(result);
     } catch {
-        res.json({ upToDate: true });
+        // Lỗi network — trả về flag để client không cache
+        res.json({ upToDate: true, _networkError: true });
     }
 });
 

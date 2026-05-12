@@ -1,0 +1,851 @@
+/* ================================================================
+   QUÂN NGUYÊN COMPUTER — Premium Multi-Color UI (Tabler)
+   ================================================================ */
+
+/* ── 1. GLOBAL FONT & VARS ── */
+:root {
+    --qn-accent:       #2563eb;
+    --qn-accent-h:     #1d4ed8;
+    --qn-accent-light: #dbeafe;
+    --qn-success:      #16a34a;
+    --qn-danger:       #dc2626;
+    --qn-warning:      #d97706;
+    --qn-border:       #e2e8f0;
+    --qn-text:         #0f172a;
+    --qn-muted:        #64748b;
+    --qn-card:         #ffffff;
+    --qn-bg:           #eef2f7;
+    --qn-card-shadow:  0 2px 16px rgba(15,23,42,0.08);
+    --qn-card-shadow-hover: 0 6px 24px rgba(15,23,42,0.13);
+    --tblr-font-family-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+    background: var(--qn-bg) !important;
+}
+
+/* ── 2. SIDEBAR BASE ── */
+.qn-sidebar {
+    background: #111827 !important;
+    border-right: 1px solid rgba(255,255,255,0.05) !important;
+    width: 220px !important;
+    min-width: 220px !important;
+}
+
+/* ── 2a. LOGO / BRAND ── */
+.qn-brand {
+    display: flex !important;
+    align-items: center;
+    gap: 11px;
+    padding: 16px 14px 14px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+    text-decoration: none !important;
+    margin: 0 !important;
+}
+.qn-brand:hover { opacity: 1 !important; background: none !important; }
+
+.qn-brand-icon {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.4);
+}
+.qn-brand-icon .ti { font-size: 1.15rem; color: #fff; }
+
+.qn-brand-text { display: flex; flex-direction: column; line-height: 1; }
+.qn-brand-name { font-size: 12px; font-weight: 800; color: #f9fafb; letter-spacing: 0.08em; display: block; }
+.qn-brand-sub  { font-size: 10px; color: #4b5563; margin-top: 3px; font-weight: 400; display: block; }
+
+/* ── 2b. NAV LIST BASE ── */
+.qn-sidebar .navbar-nav { padding: 8px 8px !important; }
+.qn-sidebar .nav-item { margin: 2px 0 !important; }
+
+.qn-sidebar .nav-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 6px 8px !important;
+    border-radius: 9px !important;
+    color: #9ca3af !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    transition: background 0.15s, color 0.15s !important;
+    position: relative;
+    text-decoration: none !important;
+}
+
+/* ── 2c. ICON BADGE — base (no color yet) ── */
+.qn-sidebar .nav-link-icon {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+    transition: transform 0.15s, box-shadow 0.15s !important;
+    background: rgba(255,255,255,0.06);
+}
+.qn-sidebar .nav-link-icon .ti {
+    font-size: 1.05rem !important;
+    color: #9ca3af !important;
+    transition: color 0.15s !important;
+}
+.qn-sidebar .nav-link-title { font-size: 13px; color: inherit; }
+
+/* Hover: highlight row, brighten icon */
+.qn-sidebar .nav-link:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: #f3f4f6 !important;
+}
+.qn-sidebar .nav-link:hover .nav-link-icon { transform: scale(1.05); }
+.qn-sidebar .nav-link:hover .nav-link-icon .ti { color: #fff !important; }
+
+/* Active: left border accent */
+.qn-sidebar .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 6px; bottom: 6px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: #2563eb; /* overridden per-item below */
+}
+
+/* ── 2d. PER-ITEM COLORED ICON BADGES ── */
+
+/* 🛒 Bán hàng — Blue */
+.qn-sidebar .ni-sell .nav-link-icon {
+    background: #2563eb !important;
+    box-shadow: 0 2px 10px rgba(37,99,235,0.45);
+}
+.qn-sidebar .ni-sell .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-sell .nav-link:hover { background: rgba(37,99,235,0.12) !important; color: #93c5fd !important; }
+.qn-sidebar .ni-sell .nav-link.active { background: rgba(37,99,235,0.18) !important; color: #60a5fa !important; }
+.qn-sidebar .ni-sell .nav-link.active::before { background: #2563eb; }
+
+/* 👥 Khách hàng — Purple */
+.qn-sidebar .ni-customers .nav-link-icon {
+    background: #7c3aed !important;
+    box-shadow: 0 2px 10px rgba(124,58,237,0.45);
+}
+.qn-sidebar .ni-customers .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-customers .nav-link:hover { background: rgba(124,58,237,0.12) !important; color: #c4b5fd !important; }
+.qn-sidebar .ni-customers .nav-link.active { background: rgba(124,58,237,0.18) !important; color: #a78bfa !important; }
+.qn-sidebar .ni-customers .nav-link.active::before { background: #7c3aed; }
+
+/* 📋 Lịch sử — Cyan */
+.qn-sidebar .ni-history .nav-link-icon {
+    background: #0891b2 !important;
+    box-shadow: 0 2px 10px rgba(8,145,178,0.45);
+}
+.qn-sidebar .ni-history .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-history .nav-link:hover { background: rgba(8,145,178,0.12) !important; color: #67e8f9 !important; }
+.qn-sidebar .ni-history .nav-link.active { background: rgba(8,145,178,0.18) !important; color: #22d3ee !important; }
+.qn-sidebar .ni-history .nav-link.active::before { background: #0891b2; }
+
+/* 📦 Linh kiện — Emerald */
+.qn-sidebar .ni-products .nav-link-icon {
+    background: #059669 !important;
+    box-shadow: 0 2px 10px rgba(5,150,105,0.45);
+}
+.qn-sidebar .ni-products .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-products .nav-link:hover { background: rgba(5,150,105,0.12) !important; color: #6ee7b7 !important; }
+.qn-sidebar .ni-products .nav-link.active { background: rgba(5,150,105,0.18) !important; color: #34d399 !important; }
+.qn-sidebar .ni-products .nav-link.active::before { background: #059669; }
+
+/* 🛡️ Bảo hành — Amber */
+.qn-sidebar .ni-warranty .nav-link-icon {
+    background: #d97706 !important;
+    box-shadow: 0 2px 10px rgba(217,119,6,0.45);
+}
+.qn-sidebar .ni-warranty .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-warranty .nav-link:hover { background: rgba(217,119,6,0.12) !important; color: #fcd34d !important; }
+.qn-sidebar .ni-warranty .nav-link.active { background: rgba(217,119,6,0.18) !important; color: #fbbf24 !important; }
+.qn-sidebar .ni-warranty .nav-link.active::before { background: #d97706; }
+
+/* 🔧 Sửa chữa — Red */
+.qn-sidebar .ni-repairs .nav-link-icon {
+    background: #dc2626 !important;
+    box-shadow: 0 2px 10px rgba(220,38,38,0.45);
+}
+.qn-sidebar .ni-repairs .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-repairs .nav-link:hover { background: rgba(220,38,38,0.12) !important; color: #fca5a5 !important; }
+.qn-sidebar .ni-repairs .nav-link.active { background: rgba(220,38,38,0.18) !important; color: #f87171 !important; }
+.qn-sidebar .ni-repairs .nav-link.active::before { background: #dc2626; }
+
+/* 💳 Công nợ — Pink */
+.qn-sidebar .ni-debts .nav-link-icon {
+    background: #db2777 !important;
+    box-shadow: 0 2px 10px rgba(219,39,119,0.45);
+}
+.qn-sidebar .ni-debts .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-debts .nav-link:hover { background: rgba(219,39,119,0.12) !important; color: #f9a8d4 !important; }
+.qn-sidebar .ni-debts .nav-link.active { background: rgba(219,39,119,0.18) !important; color: #f472b6 !important; }
+.qn-sidebar .ni-debts .nav-link.active::before { background: #db2777; }
+
+/* 🏪 Nhà cung cấp — Lime */
+.qn-sidebar .ni-suppliers .nav-link-icon {
+    background: #65a30d !important;
+    box-shadow: 0 2px 10px rgba(101,163,13,0.45);
+}
+.qn-sidebar .ni-suppliers .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-suppliers .nav-link:hover { background: rgba(101,163,13,0.12) !important; color: #bef264 !important; }
+.qn-sidebar .ni-suppliers .nav-link.active { background: rgba(101,163,13,0.18) !important; color: #a3e635 !important; }
+.qn-sidebar .ni-suppliers .nav-link.active::before { background: #65a30d; }
+
+/* 📊 Báo cáo — Violet */
+.qn-sidebar .ni-revenue .nav-link-icon {
+    background: #7e22ce !important;
+    box-shadow: 0 2px 10px rgba(126,34,206,0.45);
+}
+.qn-sidebar .ni-revenue .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-revenue .nav-link:hover { background: rgba(126,34,206,0.12) !important; color: #d8b4fe !important; }
+.qn-sidebar .ni-revenue .nav-link.active { background: rgba(126,34,206,0.18) !important; color: #c084fc !important; }
+.qn-sidebar .ni-revenue .nav-link.active::before { background: #7e22ce; }
+
+/* 💰 Thu chi — Orange */
+.qn-sidebar .ni-transactions .nav-link-icon {
+    background: #ea580c !important;
+    box-shadow: 0 2px 10px rgba(234,88,12,0.45);
+}
+.qn-sidebar .ni-transactions .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-transactions .nav-link:hover { background: rgba(234,88,12,0.12) !important; color: #fdba74 !important; }
+.qn-sidebar .ni-transactions .nav-link.active { background: rgba(234,88,12,0.18) !important; color: #fb923c !important; }
+.qn-sidebar .ni-transactions .nav-link.active::before { background: #ea580c; }
+
+/* 👤 Nhân viên — Sky */
+.qn-sidebar .ni-staff .nav-link-icon {
+    background: #0284c7 !important;
+    box-shadow: 0 2px 10px rgba(2,132,199,0.45);
+}
+.qn-sidebar .ni-staff .nav-link-icon .ti { color: #fff !important; }
+.qn-sidebar .ni-staff .nav-link:hover { background: rgba(2,132,199,0.12) !important; color: #7dd3fc !important; }
+.qn-sidebar .ni-staff .nav-link.active { background: rgba(2,132,199,0.18) !important; color: #38bdf8 !important; }
+.qn-sidebar .ni-staff .nav-link.active::before { background: #0284c7; }
+
+/* ── 2e. SETTINGS LINK (bottom area) ── */
+.qn-sidebar .ni-settings-link .nav-link-icon,
+.qn-sidebar [href="/settings"] .nav-link-icon {
+    background: rgba(255,255,255,0.08) !important;
+}
+
+/* ── 2f. SIDEBAR BOTTOM SECTION ── */
+.qn-sidebar [style*="margin-top:auto"] {
+    border-top: 1px solid rgba(255,255,255,0.07) !important;
+    padding: 10px 8px 6px !important;
+}
+.qn-sidebar [style*="margin-top:auto"] .nav-link {
+    padding: 7px 8px !important;
+    font-size: 12.5px !important;
+    color: #6b7280 !important;
+    border-radius: 8px !important;
+}
+.qn-sidebar [style*="margin-top:auto"] .nav-link:hover {
+    background: rgba(255,255,255,0.05) !important;
+    color: #d1d5db !important;
+}
+.qn-sidebar [style*="margin-top:auto"] .nav-link.active {
+    background: rgba(255,255,255,0.08) !important;
+    color: #e5e7eb !important;
+}
+#sidebarVersion { font-size: 10px !important; color: rgba(255,255,255,0.2) !important; }
+
+/* Section divider label */
+.qn-sidebar .nav-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #374151;
+    text-transform: uppercase;
+    padding: 10px 16px 4px;
+}
+
+/* ── 3. MAIN / PAGE BODY ── */
+.page-wrapper {
+    background: var(--qn-bg) !important;
+    background-image: radial-gradient(ellipse at 70% 0%, rgba(37,99,235,0.04) 0%, transparent 60%),
+                      radial-gradient(ellipse at 10% 90%, rgba(124,58,237,0.03) 0%, transparent 50%) !important;
+}
+.page-body { background: transparent !important; }
+
+/* ── 4. PAGE HEADER ── */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    border: none;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: var(--qn-card-shadow);
+    border-left: 4px solid var(--qn-accent);
+    gap: 16px;
+}
+.app-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--qn-text);
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+.app-header h2 i {
+    font-size: 1.15rem;
+    color: #fff;
+    background: linear-gradient(135deg, var(--qn-accent), #7c3aed);
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 3px 10px rgba(37,99,235,0.3);
+}
+.app-header > *:last-child { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* ── 5. BUTTONS ── */
+.btn { font-family: inherit !important; font-weight: 500 !important; }
+.btn-primary, .btn-primary:focus {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    border-color: #1d4ed8 !important;
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25) !important;
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+    border-color: #1e40af !important;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.35) !important;
+    transform: translateY(-1px);
+}
+.btn-add, .btn-add:focus {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
+    color: #15803d !important;
+    border-color: #86efac !important;
+    box-shadow: 0 1px 4px rgba(21,128,61,0.12) !important;
+}
+.btn-add:hover { background: linear-gradient(135deg, #bbf7d0, #86efac) !important; transform: translateY(-1px); }
+.btn-success, .btn-success:focus {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
+    color: #15803d !important;
+    border-color: #86efac !important;
+}
+.btn-success:hover { background: linear-gradient(135deg, #bbf7d0, #86efac) !important; }
+
+.btn-large { width: 100%; padding: 12px; font-size: 14px; font-weight: 600 !important; }
+
+.btn-remove {
+    background: none; color: var(--qn-danger); border: none;
+    padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 14px; transition: background 0.12s;
+}
+.btn-remove:hover { background: #fee2e2; }
+
+.btn-edit, .btn-delete, .btn-view, .btn-print, .btn-icon {
+    background: none; border: none; font-size: 16px; cursor: pointer;
+    padding: 5px 6px; border-radius: 5px; transition: background 0.12s, color 0.12s; color: var(--qn-muted);
+}
+.btn-edit:hover { background: var(--qn-accent-light); color: var(--qn-accent); }
+.btn-delete { color: var(--qn-danger); }
+.btn-delete:hover { background: #fee2e2; }
+.btn-icon { color: var(--qn-accent); }
+.btn-icon:hover { background: var(--qn-accent-light); }
+
+/* ── 6. TABLE ── */
+.table-wrapper {
+    background: var(--qn-card);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: var(--qn-card-shadow);
+}
+table { width: 100%; border-collapse: collapse; }
+thead tr { background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); }
+th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; }
+th {
+    font-weight: 700; color: #475569; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+    border-bottom: 2px solid #e2e8f0;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f8fbff; }
+.right { text-align: right; }
+.center { text-align: center; }
+
+/* ── 7. BADGES ── */
+.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.stock { padding: 3px 9px; border-radius: 5px; font-weight: 600; font-size: 12px; display: inline-block; }
+.stock.low { background: #fee2e2; color: var(--qn-danger); }
+.stock.medium { background: #fef3c7; color: var(--qn-warning); }
+.status-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.status-badge.active { background: #dcfce7; color: var(--qn-success); }
+.status-badge.expired { background: #fee2e2; color: var(--qn-danger); }
+
+/* ── 8. FILTERS ── */
+.filters {
+    display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+    background: #fff;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 6px rgba(15,23,42,0.05);
+}
+.filters input, .filters select {
+    padding: 9px 13px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+    font-size: 13px; font-family: inherit; flex: 1; min-width: 160px;
+    background: #f8fafc; outline: none; transition: all .15s; color: var(--qn-text);
+}
+.filters input:focus, .filters select:focus {
+    border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.2);
+    background: #fff;
+}
+.filters input::placeholder { color: #94a3b8; }
+
+/* ── 9. EMPTY STATE ── */
+.empty-state { text-align: center; padding: 56px 20px; color: #cbd5e1; }
+.empty-state p:first-child { font-size: 2.5rem; margin-bottom: 8px; }
+.empty-state p { color: var(--qn-muted); font-size: 14px; }
+
+/* ── 10. MODAL ── */
+.modal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(10,15,30,0.6); z-index: 9999;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.modal.active { display: flex; align-items: center; justify-content: center; }
+.modal-content {
+    background: var(--qn-card); border-radius: 16px; max-width: 600px;
+    width: 92%; max-height: 92vh; overflow-y: auto;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1);
+    animation: modal-in .18s cubic-bezier(0.34,1.56,0.64,1);
+}
+.modal-large { max-width: 920px; }
+@keyframes modal-in {
+    from { opacity: 0; transform: translateY(-18px) scale(.95); }
+    to   { opacity: 1; transform: none; }
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 22px;
+    border-bottom: 1px solid #f0f4f9;
+    background: linear-gradient(180deg, #fafbff, #f4f7fd);
+    border-radius: 16px 16px 0 0;
+}
+.modal-header h3 {
+    font-size: 15px; font-weight: 700; margin: 0; color: #1e293b;
+    display: flex; align-items: center; gap: 8px;
+}
+.btn-close {
+    background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 8px;
+    cursor: pointer; color: #64748b; display: flex; align-items: center;
+    justify-content: center; font-size: 18px; line-height: 1; transition: all 0.15s;
+}
+.btn-close:hover { background: #fee2e2; color: #dc2626; transform: rotate(90deg); }
+.modal-content form { padding: 20px 22px; }
+.modal-footer {
+    padding: 14px 22px; border-top: 1px solid #f0f4f9; display: flex; justify-content: flex-end; gap: 8px;
+    background: #fafbff; border-radius: 0 0 16px 16px;
+}
+
+/* ── 11. FORMS ── */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 12.5px; color: var(--qn-text); }
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--qn-border); border-radius: 7px;
+    font-size: 13.5px; font-family: inherit; background: var(--qn-card);
+    outline: none; transition: border-color .15s, box-shadow .15s; color: var(--qn-text);
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.2);
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+/* ── 12. SELL PAGE ── */
+.sell-grid {
+    display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; min-height: calc(100vh - 130px);
+}
+.product-select-panel, .cart-panel {
+    background: var(--qn-card);
+    border-radius: 12px;
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    box-shadow: var(--qn-card-shadow);
+    display: flex; flex-direction: column; overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+.product-select-panel:hover, .cart-panel:hover {
+    box-shadow: var(--qn-card-shadow-hover);
+}
+
+.panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9eef5;
+    background: linear-gradient(180deg, #fafbff 0%, #f4f7fd 100%);
+}
+.panel-header h3 {
+    font-size: 13px; font-weight: 700; margin: 0; color: #1e293b;
+    display: flex; align-items: center; gap: 7px;
+}
+.panel-header h3::before {
+    content: '';
+    display: inline-block;
+    width: 3px; height: 14px;
+    background: linear-gradient(180deg, #2563eb, #7c3aed);
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+/* Category tabs */
+.category-tabs {
+    display: flex; gap: 5px; flex-wrap: wrap;
+    padding: 10px 12px; border-bottom: 1px solid #e9eef5;
+    background: #f9fafb;
+}
+.cat-tab {
+    padding: 4px 12px; border: 1.5px solid #e2e8f0; background: #fff;
+    border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 500;
+    color: #64748b; font-family: inherit; transition: all 0.15s; white-space: nowrap;
+}
+.cat-tab:hover {
+    border-color: #93c5fd; color: #2563eb;
+    background: #eff6ff;
+    transform: translateY(-1px);
+}
+.cat-tab.active {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+
+/* Search box */
+.search-box { padding: 10px 12px; border-bottom: 1px solid #e9eef5; background: #fff; }
+.search-box input {
+    width: 100%; padding: 9px 14px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+    font-size: 13px; font-family: inherit; outline: none; color: var(--qn-text);
+    background: #f8fafc; transition: all 0.15s;
+}
+.search-box input:focus {
+    border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.2);
+    background: #fff;
+}
+.search-box input::placeholder { color: #94a3b8; }
+
+/* Product list */
+.product-list { flex: 1; overflow-y: auto; padding: 8px 10px; background: #fdfdfe; }
+
+.product-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px;
+    border: 1.5px solid #f1f5f9;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    transition: all 0.15s;
+    background: #fff;
+    cursor: pointer;
+}
+.product-item:hover {
+    border-color: #93c5fd;
+    background: linear-gradient(135deg, #f0f7ff 0%, #f5f0ff 100%);
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(37,99,235,0.1);
+}
+.product-info { flex: 1; }
+.product-name { font-weight: 600; margin-bottom: 3px; font-size: 13px; color: #1e293b; }
+.product-meta { display: flex; gap: 10px; font-size: 12px; color: #64748b; }
+.product-price { font-weight: 600; color: #2563eb; }
+.product-stock { color: #94a3b8; }
+
+/* Add to cart button */
+.btn-add-cart {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    color: white; border: none; width: 30px; height: 30px;
+    border-radius: 7px; font-size: 18px; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; margin-left: 10px;
+    transition: all 0.15s; line-height: 1;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+.btn-add-cart:hover {
+    background: linear-gradient(135deg, #1d4ed8, #4338ca);
+    transform: scale(1.12);
+    box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+}
+
+/* Customer info panel */
+.customer-info { margin-bottom: 0; padding: 12px 14px; border-bottom: 1px solid #e9eef5; background: #fafbff; }
+.customer-info h3 {
+    font-size: 10px; font-weight: 700; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+}
+.customer-search-box { display: flex; gap: 8px; margin-bottom: 8px; }
+.customer-results {
+    max-height: 180px; overflow-y: auto; background: var(--qn-card);
+    border: 1.5px solid #e2e8f0; border-radius: 8px; margin-top: 4px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+.customer-result-item {
+    padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+    font-size: 13px; transition: background .1s;
+}
+.customer-result-item:last-child { border-bottom: none; }
+.customer-result-item:hover { background: #eff6ff; }
+.selected-customer {
+    background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+    padding: 10px 12px; border-radius: 8px;
+    margin-top: 8px; position: relative; font-size: 13px;
+    border: 1.5px solid #bfdbfe;
+}
+
+/* Cart */
+.cart h3 { font-size: .95rem; font-weight: 700; margin-bottom: 12px; }
+.cart-items { flex: 1; overflow-y: auto; padding: 8px 10px; margin-bottom: 0; background: #fdfdfe; }
+.empty-cart { text-align: center; padding: 36px; color: #cbd5e1; font-size: 13px; }
+
+.cart-item {
+    border: 1.5px solid #f1f5f9; border-radius: 8px; padding: 11px 12px;
+    margin-bottom: 6px; background: #fff;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+.cart-item:hover { border-color: #dbeafe; box-shadow: 0 2px 8px rgba(37,99,235,0.07); }
+.cart-item-info { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.cart-item-name { font-weight: 600; font-size: 12.5px; color: #1e293b; }
+.cart-item-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.qty-control { display: flex; gap: 6px; align-items: center; }
+.qty-control button {
+    background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0;
+    width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.12s;
+}
+.qty-control button:hover { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+.qty-control span { font-weight: 700; font-size: 13px; min-width: 20px; text-align: center; color: #1e293b; }
+.cart-item-serial { display: flex; gap: 8px; }
+.cart-item-serial input, .cart-item-serial select {
+    flex: 1; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px;
+    background: #f8fafc;
+}
+
+/* Cart summary */
+.cart-summary {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 14px 16px;
+    border-radius: 0; margin-bottom: 0;
+    border-top: 2px solid #e2e8f0;
+}
+.summary-row {
+    display: flex; justify-content: space-between; margin-bottom: 7px;
+    font-size: 13px; color: #64748b;
+}
+.summary-row strong { color: #334155; }
+.summary-total {
+    display: flex; justify-content: space-between; font-size: 16px;
+    font-weight: 800; color: #dc2626; margin-top: 10px;
+    padding-top: 10px; border-top: 2px dashed #fca5a5;
+}
+.cart-summary input[type="number"] {
+    padding: 4px 8px; border: 1.5px solid #e2e8f0; border-radius: 6px;
+    font-size: 13px; width: 90px; text-align: right; font-family: inherit;
+    background: #fff; outline: none; transition: border-color .15s;
+}
+.cart-summary input[type="number"]:focus { border-color: #93c5fd; }
+
+/* ── 13. REPORT + SETTINGS ── */
+.report-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.report-controls select {
+    padding: 8px 13px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+    font-size: 13px; background: #fff; color: var(--qn-text);
+    font-family: inherit; outline: none; cursor: pointer; appearance: auto; min-width: 110px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.report-controls select:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.2); }
+
+.settings-panel {
+    background: var(--qn-card); padding: 22px; border-radius: 12px;
+    border: 1px solid #e2e8f0; margin-bottom: 18px; box-shadow: var(--qn-card-shadow);
+}
+.settings-panel h3 {
+    font-size: 13px; font-weight: 700; margin-bottom: 16px; color: #1e293b;
+    padding-bottom: 10px; border-bottom: 2px solid #f1f5f9;
+    display: flex; align-items: center; gap: 8px;
+}
+
+/* ── 14. SUGGESTIONS ── */
+.suggestions {
+    position: absolute; background: var(--qn-card); border: 1px solid var(--qn-border);
+    border-radius: 8px; z-index: 100; max-height: 200px; overflow-y: auto; width: 100%;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+.suggestion-item { padding: 9px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f1f5f9; transition: background .1s; }
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:hover { background: #f0f9ff; }
+
+/* ── 15. MISC ── */
+.serial-code { display: inline-block; background: var(--qn-accent-light); color: #1d4ed8; padding: 2px 7px; border-radius: 4px; font-size: 11px; margin-left: 6px; font-family: 'Courier New', monospace; font-weight: 600; }
+.serial-badge { display: inline-block; background: #f1f5f9; padding: 2px 7px; border-radius: 4px; font-size: 11px; margin-left: 5px; font-family: 'Courier New', monospace; }
+.stock-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+.stock-badge.serial { background: var(--qn-accent-light); color: #1d4ed8; }
+.subcategory-filter { padding: 0 12px 8px; }
+.subcategory-filter select { width: 100%; padding: 7px 10px; border: 1px solid var(--qn-border); border-radius: 7px; font-size: 13px; font-family: inherit; background: var(--qn-card); outline: none; }
+
+/* ── 16. SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── 17. PER-PAGE ACCENT THEMING ── */
+/*
+  Each page gets a tinted header + gradient background that matches
+  its sidebar icon color (at ~20–30% opacity).
+  Format: .page-{name} .app-header + .page-{name} .page-wrapper (bg)
+*/
+
+/* Helper mixin via CSS variables on each page class */
+/* 🛒 Bán hàng — Blue #2563eb */
+.page-sell { background: linear-gradient(160deg, #e8f0ff 0%, #eef2f7 50%) !important; }
+.page-sell .app-header { background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); border-left-color: #2563eb; }
+.page-sell .app-header h2 i { background: linear-gradient(135deg, #2563eb, #4f46e5); box-shadow: 0 3px 10px rgba(37,99,235,0.3); }
+
+/* 👥 Khách hàng — Purple #7c3aed */
+.page-customers { background: linear-gradient(160deg, #ede9ff 0%, #eef2f7 50%) !important; }
+.page-customers .app-header { background: linear-gradient(135deg, #ede9ff 0%, #f0ebff 100%); border-left-color: #7c3aed; }
+.page-customers .app-header h2 i { background: linear-gradient(135deg, #7c3aed, #6d28d9); box-shadow: 0 3px 10px rgba(124,58,237,0.3); }
+
+/* 📋 Lịch sử — Cyan #0891b2 */
+.page-history { background: linear-gradient(160deg, #e0f5fa 0%, #eef2f7 50%) !important; }
+.page-history .app-header { background: linear-gradient(135deg, #cffafe 0%, #e0f5fa 100%); border-left-color: #0891b2; }
+.page-history .app-header h2 i { background: linear-gradient(135deg, #0891b2, #0e7490); box-shadow: 0 3px 10px rgba(8,145,178,0.3); }
+
+/* 📦 Linh kiện — Emerald #059669 */
+.page-products { background: linear-gradient(160deg, #d9f5ea 0%, #eef2f7 50%) !important; }
+.page-products .app-header { background: linear-gradient(135deg, #d1fae5 0%, #dcfce7 100%); border-left-color: #059669; }
+.page-products .app-header h2 i { background: linear-gradient(135deg, #059669, #047857); box-shadow: 0 3px 10px rgba(5,150,105,0.3); }
+
+/* 🛡️ Bảo hành — Amber #d97706 */
+.page-warranty { background: linear-gradient(160deg, #fdf3d8 0%, #eef2f7 50%) !important; }
+.page-warranty .app-header { background: linear-gradient(135deg, #fef3c7 0%, #fef9e6 100%); border-left-color: #d97706; }
+.page-warranty .app-header h2 i { background: linear-gradient(135deg, #d97706, #b45309); box-shadow: 0 3px 10px rgba(217,119,6,0.3); }
+
+/* 🔧 Sửa chữa — Red #dc2626 */
+.page-repairs { background: linear-gradient(160deg, #fde8e8 0%, #eef2f7 50%) !important; }
+.page-repairs .app-header { background: linear-gradient(135deg, #fee2e2 0%, #fef0f0 100%); border-left-color: #dc2626; }
+.page-repairs .app-header h2 i { background: linear-gradient(135deg, #dc2626, #b91c1c); box-shadow: 0 3px 10px rgba(220,38,38,0.3); }
+
+/* 💳 Công nợ — Pink #db2777 */
+.page-debts { background: linear-gradient(160deg, #fde6f2 0%, #eef2f7 50%) !important; }
+.page-debts .app-header { background: linear-gradient(135deg, #fce7f3 0%, #fef0f6 100%); border-left-color: #db2777; }
+.page-debts .app-header h2 i { background: linear-gradient(135deg, #db2777, #be185d); box-shadow: 0 3px 10px rgba(219,39,119,0.3); }
+
+/* 🏪 Nhà cung cấp — Lime #65a30d */
+.page-suppliers { background: linear-gradient(160deg, #e8f5d0 0%, #eef2f7 50%) !important; }
+.page-suppliers .app-header { background: linear-gradient(135deg, #ecfccb 0%, #f0fde4 100%); border-left-color: #65a30d; }
+.page-suppliers .app-header h2 i { background: linear-gradient(135deg, #65a30d, #4d7c0f); box-shadow: 0 3px 10px rgba(101,163,13,0.3); }
+
+/* 📊 Báo cáo — Violet #7e22ce */
+.page-revenue { background: linear-gradient(160deg, #f0e6ff 0%, #eef2f7 50%) !important; }
+.page-revenue .app-header { background: linear-gradient(135deg, #f3e8ff 0%, #f7f0ff 100%); border-left-color: #7e22ce; }
+.page-revenue .app-header h2 i { background: linear-gradient(135deg, #7e22ce, #6b21a8); box-shadow: 0 3px 10px rgba(126,34,206,0.3); }
+
+/* 💰 Thu chi — Orange #ea580c */
+.page-transactions { background: linear-gradient(160deg, #fde9d9 0%, #eef2f7 50%) !important; }
+.page-transactions .app-header { background: linear-gradient(135deg, #ffedd5 0%, #fef5e8 100%); border-left-color: #ea580c; }
+.page-transactions .app-header h2 i { background: linear-gradient(135deg, #ea580c, #c2410c); box-shadow: 0 3px 10px rgba(234,88,12,0.3); }
+
+/* 👤 Nhân viên — Sky #0284c7 */
+.page-admin-users { background: linear-gradient(160deg, #daeefe 0%, #eef2f7 50%) !important; }
+.page-admin-users .app-header { background: linear-gradient(135deg, #e0f2fe 0%, #e8f5fe 100%); border-left-color: #0284c7; }
+.page-admin-users .app-header h2 i { background: linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 3px 10px rgba(2,132,199,0.3); }
+
+/* ⚙️ Cài đặt — Slate */
+.page-settings { background: linear-gradient(160deg, #e2e8f0 0%, #eef2f7 50%) !important; }
+.page-settings .app-header { background: linear-gradient(135deg, #e2e8f0 0%, #f1f5f9 100%); border-left-color: #475569; }
+.page-settings .app-header h2 i { background: linear-gradient(135deg, #475569, #334155); box-shadow: 0 3px 10px rgba(71,85,105,0.25); }
+
+/* ── 18. GLOBAL POLISH ── */
+
+
+/* Form inputs global */
+input[type="text"], input[type="number"], input[type="email"],
+input[type="tel"], input[type="date"], input[type="search"],
+select, textarea {
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Generic cards used across pages */
+.card, .card-body {
+    border-radius: 12px !important;
+    box-shadow: var(--qn-card-shadow) !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+/* Stats / summary boxes if any */
+.stat-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: var(--qn-card-shadow);
+    transition: all 0.2s;
+}
+.stat-box:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--qn-card-shadow-hover);
+}
+.stat-value { font-size: 22px; font-weight: 800; color: #1e293b; }
+.stat-label { font-size: 12px; color: #94a3b8; font-weight: 500; margin-top: 2px; }
+
+/* Page section titles */
+.section-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, #e2e8f0, transparent);
+}
+
+/* Action row with table */
+.table-wrapper + .table-wrapper { margin-top: 16px; }
+
+/* Inline alert/info strips */
+.info-strip {
+    background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #1d4ed8;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+/* Highlight rows in tables */
+tr.highlight td { background: linear-gradient(90deg, #eff6ff 0%, #f0f9ff 100%) !important; }
+tr.danger td { background: #fff5f5 !important; }
+tr.warning-row td { background: #fffbeb !important; }
+
+/* Page container extra spacing */
+.container-xl.py-3 { padding-top: 20px !important; padding-bottom: 40px !important; }
+
+/* Smooth transitions for interactive elements */
+button, a, input, select { transition: all 0.15s ease; }

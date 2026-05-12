@@ -93,20 +93,18 @@ function sendExpiryAlert({ token, chatId, shopName, machineId, daysLeft, expiry 
 
 // ── Khởi động toàn bộ heartbeat system ────────────────────────────────────
 function start({ token, chatId, shopName, db, license }) {
-    const { getLicenseStatus, getMachineId, checkOnlineRevocation, invalidateLicenseCache } = license;
+    const { getLicenseStatus, getMachineId, checkOnlineRevocation, invalidateLicenseCache,
+            loadLicense, validateKey } = license;
     const machineId = getMachineId();
 
-    // Helper xóa license khi bị thu hồi
+    // Helper chặn license khi bị thu hồi (KHÔNG xóa file — dùng flag để auto-phục hồi khi mở khóa)
     function killLicense() {
-        invalidateLicenseCache();
-        try {
-            // Xóa từ AppData (cùng path với license.js getLicenseFile())
-            const appData = process.env.APPDATA || path.join(require('os').homedir(), 'AppData', 'Roaming');
-            const licPath = typeof process.pkg !== 'undefined'
-                ? path.join(appData, 'QuanLyBanHang', 'license.dat')
-                : path.join(__dirname, 'license.dat');
-            fs.unlinkSync(licPath);
-        } catch {}
+        license.blockLicense(); // tạo license.blocked, giữ nguyên license.dat
+    }
+
+    // Helper mở khóa khi admin unrevoke (xóa flag, phần mềm tự phục hồi)
+    function restoreLicense() {
+        license.unblockLicense(); // xóa license.blocked, không cần nhập lại key
     }
 
     // ── 1. Gửi heartbeat khởi động ──
@@ -129,34 +127,54 @@ function start({ token, chatId, shopName, db, license }) {
         : path.join(__dirname, 'license.check');
     try { fs.writeFileSync(licCheckFile, '0'); } catch {} // reset để ép check ngay
 
-    if (licStatus.active) {
-        checkOnlineRevocation(machineId).then(notRevoked => {
-            if (!notRevoked) {
-                console.log('[License] ⛔ Bị thu hồi (startup check)');
-                sendRevokedAlert({ token, chatId, shopName, machineId });
-                killLicense();
-            }
-        }).catch(() => {});
-    }
+    // Startup check (kể cả khi đang bị block — để auto-phục hồi khi admin mở khóa)
+    checkOnlineRevocation(machineId).then(notRevoked => {
+        if (!notRevoked) {
+            // Nếu license local còn hợp lệ → GitHub chưa cập nhật (admin vừa cấp key mới)
+            const lic = loadLicense ? loadLicense() : null;
+            if (lic && validateKey && validateKey(lic)) { restoreLicense(); return; }
+            console.log('[License] ⛔ Bị thu hồi (startup check)');
+            sendRevokedAlert({ token, chatId, shopName, machineId });
+            killLicense();
+        } else {
+            restoreLicense(); // Nếu đang bị block nhưng đã được mở khóa → tự phục hồi
+        }
+    }).catch(() => {});
 
-    // ── 3. Kiểm tra định kỳ mỗi 2 tiếng ──
+    // ── 3a. Check thu hồi mỗi 5 phút (phản ứng nhanh khi admin khóa/mở) ──
+    const FIVE_MIN  = 5 * 60 * 1000;
     const TWO_HOURS = 2 * 60 * 60 * 1000;
+
     setInterval(() => {
         const st = getLicenseStatus();
-        if (!st.active) return; // đã bị block rồi
+        // Bỏ qua nếu chưa kích hoạt hoặc hết hạn bình thường (không phải do revoke)
+        if (!st.active && !st.revoked) return;
 
-        try { fs.writeFileSync(licCheckFile, '0'); } catch {}
+        try { fs.writeFileSync(licCheckFile, '0'); } catch {} // force check, bỏ cache 24h
 
         checkOnlineRevocation(machineId).then(notRevoked => {
             if (!notRevoked) {
-                console.log('[License] ⛔ Bị thu hồi (periodic check)');
-                sendRevokedAlert({ token, chatId, shopName, machineId });
+                // Nếu license local còn hợp lệ → GitHub chưa cập nhật, không block/alert
+                const lic = loadLicense ? loadLicense() : null;
+                if (lic && validateKey && validateKey(lic)) { restoreLicense(); return; }
+                if (!st.revoked) {
+                    console.log('[License] ⛔ Bị thu hồi (5-min check)');
+                    sendRevokedAlert({ token, chatId, shopName, machineId }); // gửi 1 lần khi mới phát hiện
+                }
                 killLicense();
-            } else if (st.expiringSoon) {
-                sendExpiryAlert({ token, chatId, shopName, machineId,
-                    daysLeft: st.daysLeft, expiry: st.expiry });
+            } else {
+                restoreLicense(); // Auto-phục hồi khi admin mở khóa
             }
         }).catch(() => {});
+    }, FIVE_MIN);
+
+    // ── 3b. Cảnh báo sắp hết hạn mỗi 2 tiếng ──
+    setInterval(() => {
+        const st = getLicenseStatus();
+        if (st.active && st.expiringSoon) {
+            sendExpiryAlert({ token, chatId, shopName, machineId,
+                daysLeft: st.daysLeft, expiry: st.expiry });
+        }
     }, TWO_HOURS);
 }
 
