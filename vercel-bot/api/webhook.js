@@ -19,8 +19,6 @@ async function tg(method, params) {
 // ============ GITHUB API ============
 async function ghGet(filePath) {
     try {
-        // Thử đọc có token trước (cần thiết cho repo private + ghi sau này)
-        // Nếu không có token hoặc token hết hạn → thử đọc không cần token (repo public)
         const headers = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'QLBH-Bot/1.0' };
         if (GH_TOKEN) headers['Authorization'] = `Bearer ${GH_TOKEN}`;
 
@@ -28,13 +26,16 @@ async function ghGet(filePath) {
             `https://api.github.com/repos/${GH_REPO}/contents/${filePath}`,
             { headers }
         );
+        console.log(`[ghGet] ${filePath} status=${res.status} token=${GH_TOKEN ? 'yes' : 'no'}`);
         if (!res.ok) {
-            // Nếu token lỗi (401/403), thử lại không token
+            const errText = await res.text().catch(() => '');
+            console.log(`[ghGet] error body: ${errText.slice(0, 200)}`);
             if (GH_TOKEN && (res.status === 401 || res.status === 403)) {
                 const res2 = await fetch(
                     `https://api.github.com/repos/${GH_REPO}/contents/${filePath}`,
                     { headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'QLBH-Bot/1.0' } }
                 );
+                console.log(`[ghGet] no-auth fallback status=${res2.status}`);
                 if (!res2.ok) return null;
                 const data2 = await res2.json();
                 return { content: JSON.parse(Buffer.from(data2.content, 'base64').toString('utf8')), sha: data2.sha };
@@ -42,8 +43,13 @@ async function ghGet(filePath) {
             return null;
         }
         const data = await res.json();
-        return { content: JSON.parse(Buffer.from(data.content, 'base64').toString('utf8')), sha: data.sha };
-    } catch { return null; }
+        const parsed = JSON.parse(Buffer.from(data.content, 'base64').toString('utf8').replace(/^﻿/, ''));
+        console.log(`[ghGet] ${filePath} parsed OK, items=${Array.isArray(parsed) ? parsed.length : 'not-array'}`);
+        return { content: parsed, sha: data.sha };
+    } catch(e) {
+        console.log(`[ghGet] exception: ${e.message}`);
+        return null;
+    }
 }
 
 async function ghPut(filePath, content, sha, message) {
