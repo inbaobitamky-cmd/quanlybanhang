@@ -18,13 +18,29 @@ async function tg(method, params) {
 
 // ============ GITHUB API ============
 async function ghGet(filePath) {
-    if (!GH_TOKEN) return null;
     try {
+        // Thử đọc có token trước (cần thiết cho repo private + ghi sau này)
+        // Nếu không có token hoặc token hết hạn → thử đọc không cần token (repo public)
+        const headers = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'QLBH-Bot/1.0' };
+        if (GH_TOKEN) headers['Authorization'] = `Bearer ${GH_TOKEN}`;
+
         const res = await fetch(
             `https://api.github.com/repos/${GH_REPO}/contents/${filePath}`,
-            { headers: { 'Authorization': `Bearer ${GH_TOKEN}`, 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'QLBH-Bot/1.0' } }
+            { headers }
         );
-        if (!res.ok) return null;
+        if (!res.ok) {
+            // Nếu token lỗi (401/403), thử lại không token
+            if (GH_TOKEN && (res.status === 401 || res.status === 403)) {
+                const res2 = await fetch(
+                    `https://api.github.com/repos/${GH_REPO}/contents/${filePath}`,
+                    { headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'QLBH-Bot/1.0' } }
+                );
+                if (!res2.ok) return null;
+                const data2 = await res2.json();
+                return { content: JSON.parse(Buffer.from(data2.content, 'base64').toString('utf8')), sha: data2.sha };
+            }
+            return null;
+        }
         const data = await res.json();
         return { content: JSON.parse(Buffer.from(data.content, 'base64').toString('utf8')), sha: data.sha };
     } catch { return null; }
