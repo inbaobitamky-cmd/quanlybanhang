@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "machineId": "BF87B1-E5EEEE-3AD64B-FE8F90",
     "shopName": "TRẦN PHÚ COMPUTER",
@@ -19,8 +19,7 @@
     "months": 6,
     "expiry": "2026-11-04",
     "activatedAt": "2026-05-08T01:32:43.954Z",
-    "revoked": true,
-    "revokedAt": "2026-04-29T00:41:28.064Z"
+    "revoked": false
   },
   {
     "machineId": "586233-7103A7-85FCBC-CD1902",
