@@ -137,33 +137,29 @@ function start({ token, chatId, shopName, db, license, checkinUrl }) {
                 daysLeft: licStatus.daysLeft, expiry: licStatus.expiry });
         }
 
-        // Tự động unrevoke nếu license đang hợp lệ mà trước đó bị khóa
+        // Cập nhật display shops.json nếu stale (KHÔNG xóa revoked.json — không can thiệp lock)
         callCheckin(checkinUrl, machineId, token, licStatus.isLifetime ? null : licStatus.daysLeft);
     }
 
-    // ── 2. Check revocation ngay khi khởi động (force — reset cache 24h) ──
-    // licCheckFile phải cùng path với license.js (AppData khi chạy exe)
+    // ── 2. Check revocation ngay khi khởi động (force — reset cache) ──
     const appDataDir = process.env.APPDATA || path.join(require('os').homedir(), 'AppData', 'Roaming');
     const licCheckFile = typeof process.pkg !== 'undefined'
         ? path.join(appDataDir, 'QuanLyBanHang', 'license.check')
         : path.join(__dirname, 'license.check');
     try { fs.writeFileSync(licCheckFile, '0'); } catch {} // reset để ép check ngay
 
-    // Startup check (kể cả khi đang bị block — để auto-phục hồi khi admin mở khóa)
+    // Startup check — KHÔNG có bypass: revoke luôn thắng, kể cả key local còn hạn
     checkOnlineRevocation(machineId).then(notRevoked => {
         if (!notRevoked) {
-            // Nếu license local còn hợp lệ → GitHub chưa cập nhật (admin vừa cấp key mới)
-            const lic = loadLicense ? loadLicense() : null;
-            if (lic && validateKey && validateKey(lic)) { restoreLicense(); return; }
             console.log('[License] ⛔ Bị thu hồi (startup check)');
             sendRevokedAlert({ token, chatId, shopName, machineId });
             killLicense();
         } else {
-            restoreLicense(); // Nếu đang bị block nhưng đã được mở khóa → tự phục hồi
+            restoreLicense(); // Đang bị block nhưng đã được mở khóa → tự phục hồi
         }
     }).catch(() => {});
 
-    // ── 3a. Check thu hồi mỗi 5 phút (phản ứng nhanh khi admin khóa/mở) ──
+    // ── 3a. Check thu hồi mỗi 5 phút — KHÔNG có bypass ──
     const FIVE_MIN  = 5 * 60 * 1000;
     const TWO_HOURS = 2 * 60 * 60 * 1000;
 
@@ -172,20 +168,17 @@ function start({ token, chatId, shopName, db, license, checkinUrl }) {
         // Bỏ qua nếu chưa kích hoạt hoặc hết hạn bình thường (không phải do revoke)
         if (!st.active && !st.revoked) return;
 
-        try { fs.writeFileSync(licCheckFile, '0'); } catch {} // force check, bỏ cache 24h
+        try { fs.writeFileSync(licCheckFile, '0'); } catch {} // force check, bỏ cache
 
         checkOnlineRevocation(machineId).then(notRevoked => {
             if (!notRevoked) {
-                // Nếu license local còn hợp lệ → GitHub chưa cập nhật, không block/alert
-                const lic = loadLicense ? loadLicense() : null;
-                if (lic && validateKey && validateKey(lic)) { restoreLicense(); return; }
                 if (!st.revoked) {
                     console.log('[License] ⛔ Bị thu hồi (5-min check)');
-                    sendRevokedAlert({ token, chatId, shopName, machineId }); // gửi 1 lần khi mới phát hiện
+                    sendRevokedAlert({ token, chatId, shopName, machineId });
                 }
-                killLicense();
+                killLicense(); // Block ngay, không bypass dù key local còn hạn
             } else {
-                restoreLicense(); // Auto-phục hồi khi admin mở khóa
+                restoreLicense(); // Admin đã mở khóa → tự phục hồi
             }
         }).catch(() => {});
     }, FIVE_MIN);

@@ -65,36 +65,36 @@ module.exports = async (req, res) => {
         return res.status(400).json({ ok: false, error: 'missing machineId' });
     }
 
-    // License đã hết hạn → không unrevoke
+    const mid = machineId.toUpperCase();
+
+    // License đã hết hạn → không làm gì
     const days = typeof daysLeft === 'number' ? daysLeft : parseInt(daysLeft);
     if (!isNaN(days) && days <= 0) {
         return res.json({ ok: true, action: 'none', reason: 'expired' });
     }
 
-    // Đọc shops.json
+    // Kiểm tra revoked.json — nếu admin đang THỰC SỰ khóa → KHÔNG can thiệp
+    const { list: revokedList } = await getRevokedList();
+    if (revokedList.includes(mid)) {
+        // Máy đang bị khóa bởi admin → không tự mở khóa, để client bị block bình thường
+        return res.json({ ok: true, action: 'none', reason: 'genuinely_revoked' });
+    }
+
+    // Máy KHÔNG có trong revoked.json nhưng shops.json vẫn còn cờ revoked: true (stale data)
+    // → chỉ fix display trong shops.json, không động đến revoked.json
     const { shops, sha } = await getShops();
-    const shop = shops.find(s => s.machineId === machineId.toUpperCase());
+    if (!shops) return res.json({ ok: false, error: 'failed to read shops' });
 
-    // Không bị revoked → không cần làm gì
+    const shop = shops.find(s => s.machineId === mid);
     if (!shop || !shop.revoked) {
-        return res.json({ ok: true, action: 'none' });
+        return res.json({ ok: true, action: 'none' }); // không có gì cần fix
     }
 
-    // Xóa khỏi revoked.json
-    const { list: revokedList, sha: revokedSha } = await getRevokedList();
-    if (revokedList.includes(machineId.toUpperCase())) {
-        await ghPut('revoked.json',
-            revokedList.filter(id => id !== machineId.toUpperCase()),
-            revokedSha,
-            `Auto-unrevoke ${machineId} — client startup, license valid (${days !== undefined ? days + ' ngày' : 'vĩnh viễn'})`
-        );
-    }
-
-    // Cập nhật shops.json: xóa cờ revoked
+    // Fix stale display: shops.json có revoked:true nhưng thực tế không bị lock
     shop.revoked = false;
     delete shop.revokedAt;
     await saveShops(shops, sha);
 
-    console.log(`[checkin] Auto-unrevoked ${machineId} — daysLeft=${daysLeft}`);
-    return res.json({ ok: true, action: 'unrevoked', machineId });
+    console.log(`[checkin] Fixed stale revoked display for ${mid} — daysLeft=${daysLeft}`);
+    return res.json({ ok: true, action: 'fixed_display', machineId: mid });
 };
