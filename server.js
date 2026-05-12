@@ -130,33 +130,32 @@ app.use(session({
     cookie: { maxAge: 8 * 60 * 60 * 1000 }
 }));
 
-// ============== SERVER-SIDE REVOCATION POLL (mỗi 1 phút) ==============
-// Tách riêng với heartbeat — check nhanh hơn, chỉ để phát hiện revoke/unrevoke
+// ============== SERVER-SIDE REVOCATION POLL ==============
 (function startRevocationWatcher() {
-    const fs2 = require('fs'), path2 = require('path'), os2 = require('os');
-    const appData = process.env.APPDATA || path2.join(os2.homedir(), 'AppData', 'Roaming');
-    const checkFile = typeof process.pkg !== 'undefined'
-        ? path2.join(appData, 'QuanLyBanHang', 'license.check')
-        : path2.join(__dirname, 'license.check');
+    const machineId = license.getMachineId();
 
-    setInterval(() => {
+    function doCheck(forceCheck) {
         const st = license.getLicenseStatus();
-        // Chạy khi active HOẶC khi đang bị block (để tự phục hồi)
+        // Chạy khi active HOẶC khi đang bị revoke (để tự phục hồi khi được mở khóa)
         if (!st.active && !st.revoked) return;
-        try { fs2.writeFileSync(checkFile, '0'); } catch {}
-        const machineId = license.getMachineId();
-        license.checkOnlineRevocation(machineId).then(notRevoked => {
-            if (!notRevoked && !st.revoked) {
-                // Nếu license local vẫn hợp lệ (key đúng + còn hạn) → không block
-                // Tránh trường hợp admin cấp key mới nhưng GitHub chưa kịp cập nhật
-                const lic = license.loadLicense();
-                if (lic && license.validateKey(lic)) return;
+
+        license.checkOnlineRevocation(machineId, forceCheck).then(notRevoked => {
+            if (!notRevoked) {
+                // GitHub nói bị thu hồi → block ngay, kể cả key local còn hạn
                 license.blockLicense();
             } else if (notRevoked && st.revoked) {
-                license.unblockLicense(); // phát hiện được mở khóa → restore ngay
+                // GitHub nói không còn bị thu hồi → unblock ngay (đã được kích hoạt lại)
+                license.unblockLicense();
+                license.invalidateLicenseCache();
             }
         }).catch(() => {});
-    }, 60 * 1000); // mỗi 1 phút
+    }
+
+    // ── Check NGAY KHI KHỞI ĐỘNG (forceCheck=true, bỏ qua throttle) ──
+    setTimeout(() => doCheck(true), 3000); // đợi 3s để server ổn định
+
+    // ── Check định kỳ mỗi 5 phút ──
+    setInterval(() => doCheck(false), 5 * 60 * 1000);
 })();
 
 // ============== LICENSE MIDDLEWARE ==============

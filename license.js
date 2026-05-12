@@ -323,13 +323,15 @@ function saveLastCheckTime() {
     try { fs.writeFileSync(checkStateFile, String(Date.now())); } catch {}
 }
 
-function checkOnlineRevocation(machineId) {
-    // Check mỗi 5 phút (thay vì 24 giờ) để phát hiện revoke nhanh hơn
-    const lastCheck = getLastCheckTime();
-    const intervalMs = 5 * 60 * 1000;
-    if (Date.now() - lastCheck < intervalMs) {
-        // Chưa đến hạn check → trả về trạng thái hiện tại (revoked nếu đang bị block)
-        return Promise.resolve(!isLicenseBlocked());
+// forceCheck = true → bỏ qua throttle, check ngay (dùng khi startup)
+function checkOnlineRevocation(machineId, forceCheck = false) {
+    // Throttle 5 phút — trừ khi gọi với forceCheck=true (startup)
+    if (!forceCheck) {
+        const lastCheck = getLastCheckTime();
+        const intervalMs = 5 * 60 * 1000;
+        if (Date.now() - lastCheck < intervalMs) {
+            return Promise.resolve(!isLicenseBlocked());
+        }
     }
 
     return new Promise(resolve => {
@@ -346,7 +348,7 @@ function checkOnlineRevocation(machineId) {
                     } else {
                         resolve(true);  // Không bị thu hồi
                     }
-                } catch { resolve(true); } // Parse lỗi → cho qua
+                } catch { resolve(true); }
             });
         });
         req.on('error', () => resolve(true)); // Mất mạng → cho qua
