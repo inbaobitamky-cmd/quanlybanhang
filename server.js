@@ -215,7 +215,6 @@ const _machineInfoCache = {};
 // ============== ACTIVATE ==============
 app.get('/activate', (req, res) => {
     const status      = license.getLicenseStatus();
-    if (status.active) return res.redirect(req.session.user ? '/' : '/login');
     const machineId   = license.getMachineId();
     const machineInfo = license.getMachineInfo();
     const botUsername = getBotUsername();
