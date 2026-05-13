@@ -75,16 +75,5 @@
     "expiry": "2026-05-11",
     "activatedAt": "2026-05-08T04:39:42.894Z",
     "revoked": false
-  },
-  {
-    "machineId": "6E1DE5-D7A968-77006E-6632D3",
-    "shopName": "Quân Nguyễn",
-    "userId": "5240628702",
-    "userName": "@hoanglongnguyen",
-    "plan": "6 tháng 📅",
-    "months": 6,
-    "expiry": "2026-11-09",
-    "activatedAt": "2026-05-13T03:12:17.649Z",
-    "revoked": false
   }
 ]
