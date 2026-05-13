@@ -310,15 +310,8 @@ async function handleMessage(msg) {
                 midMap[mid].push(s);
             });
             const duplicates = Object.entries(midMap).filter(([, list]) => list.length > 1);
-            let dupBlock = '';
-            if (duplicates.length > 0) {
-                const lines = duplicates.map(([mid, list]) => {
-                    const names = list.map(s => `<b>${s.shopName}</b>`).join(', ');
-                    return `  ⚠️ <code>${mid}</code>\n     → ${names}`;
-                }).join('\n');
-                dupBlock = `\n\n🚨 <b>PHÁT HIỆN ${duplicates.length} MACHINE ID TRÙNG:</b>\n${lines}`;
-            }
 
+            // Gửi thống kê chính
             await tg('sendMessage', {
                 chat_id: userId, parse_mode: 'HTML',
                 text: `📊 <b>Thống kê cửa hàng</b>\n\n` +
@@ -327,10 +320,30 @@ async function handleMessage(msg) {
                       `🔴 Bị khóa: <b>${locked}</b>\n` +
                       `♾️ Vĩnh viễn: <b>${lifetime}</b>\n` +
                       `⚠️ Sắp hết hạn (≤30 ngày): <b>${expiring}</b>\n` +
-                      `❌ Đã hết hạn: <b>${expired}</b>` +
-                      dupBlock + `\n\n⏰ ${new Date().toLocaleString('vi-VN')}`,
+                      `❌ Đã hết hạn: <b>${expired}</b>\n\n` +
+                      `⏰ ${new Date().toLocaleString('vi-VN')}`,
                 reply_markup: { keyboard: ADMIN_KEYBOARD.keyboard, resize_keyboard: true, persistent: true }
             });
+
+            // Gửi cảnh báo riêng cho từng nhóm trùng, kèm nút xóa từng shop
+            for (const [mid, list] of duplicates) {
+                const lines = list.map(s => {
+                    const status = s.revoked ? '🔴 Khóa' : '🟢 Active';
+                    const expiry = s.expiry === '9999-12-31' ? '♾️ Vĩnh viễn' : s.expiry;
+                    return `• <b>${s.shopName}</b>\n  ${status} | Hết hạn: ${expiry}`;
+                }).join('\n\n');
+
+                // Mỗi shop 1 nút xóa riêng
+                const buttons = list.map(s =>
+                    [{ text: `🗑 Xóa "${s.shopName}" (${s.expiry === '9999-12-31' ? '♾️' : s.expiry})`, callback_data: `delete_confirm|${s.machineId}|0` }]
+                );
+
+                await tg('sendMessage', {
+                    chat_id: userId, parse_mode: 'HTML',
+                    text: `🚨 <b>MACHINE ID TRÙNG</b>\n<code>${mid}</code>\n\n${lines}\n\n👇 Chọn shop cần xóa:`,
+                    reply_markup: { inline_keyboard: buttons }
+                });
+            }
             return;
         }
 
