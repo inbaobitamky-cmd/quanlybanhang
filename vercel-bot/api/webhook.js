@@ -359,6 +359,38 @@ async function handleMessage(msg) {
             return;
         }
 
+        // ── Kích hoạt số ngày tùy chỉnh: /ngay <userId> <machineId> <days> ──
+        if (text.startsWith('/ngay ')) {
+            const args = text.slice(6).trim().split(/\s+/);
+            if (args.length < 3) {
+                await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML',
+                    text: `❌ Cú pháp: <code>/ngay &lt;userId&gt; &lt;machineId&gt; &lt;số_ngày&gt;</code>\nVí dụ: <code>/ngay 524062870 6E1DE5-D7A968 176</code>` });
+                return;
+            }
+            const targetUserId  = args[0];
+            const targetMachine = args[1].toUpperCase();
+            const days          = parseInt(args[2]);
+            if (isNaN(days) || days <= 0) {
+                await tg('sendMessage', { chat_id: userId, text: '❌ Số ngày không hợp lệ.' });
+                return;
+            }
+            const { key, expiry } = generateKey(targetMachine, -days);
+            const expiryFmt = new Date(expiry).toLocaleDateString('vi-VN');
+            // Gửi key cho khách
+            await tg('sendMessage', { chat_id: targetUserId, parse_mode: 'HTML',
+                text: `🎉 <b>KÍCH HOẠT THÀNH CÔNG!</b>\n\n🔑 <b>Key của bạn:</b>\n<code>${key}</code>\n\n📅 <b>Gói:</b> ${days} ngày 📅\n⏳ <b>Hạn sử dụng:</b> ${expiryFmt}\n\n📋 Sao chép key trên và nhập vào phần mềm.\n💾 <i>Lưu lại key — cần dùng khi cài lại máy.</i>` });
+            // Lưu vào shops.json
+            try {
+                const { shops: sl, sha: ss } = await getShops();
+                const filtered = sl.filter(s => (s.machineId || '').toUpperCase() !== targetMachine);
+                filtered.push({ machineId: targetMachine, shopName: `(${days}d custom)`, userId: targetUserId, userName: '—', plan: `${days} ngày 📅`, months: -days, expiry, activatedAt: new Date().toISOString(), revoked: false });
+                await saveShops(filtered, ss);
+            } catch(e) { console.log('[/ngay] save shops err:', e.message); }
+            await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML',
+                text: `✅ <b>Đã cấp key ${days} ngày</b>\n🔑 <code>${key}</code>\n💻 <code>${targetMachine}</code>\n⏳ Hết hạn: ${expiryFmt}` });
+            return;
+        }
+
         if (text.startsWith('/mokhoa ')) {
             const machineId = text.slice(8).trim().toUpperCase();
             await tg('sendMessage', { chat_id: userId, text: '⏳ Đang mở khóa...' });
@@ -432,13 +464,24 @@ async function sendActivationRequest(userId, machineId, mInfo, userName, shopNam
     const { shops } = await getShops();
     const existing  = shops.filter(s => (s.machineId || '').toUpperCase() === mid);
     let warningBlock = '';
+    let oldDaysHint  = '';   // gợi ý số ngày còn lại để admin dùng nút Tùy chỉnh
     if (existing.length > 0) {
+        const today = new Date(); today.setHours(0,0,0,0);
         const lines = existing.map(s => {
             const status  = s.revoked ? '🔴 Đang khóa' : '🟢 Active';
-            const expiry  = s.expiry === '9999-12-31' ? '♾️ Vĩnh viễn' : s.expiry;
-            return `  • <b>${s.shopName}</b> — ${status} — Hết hạn: ${expiry}`;
+            let expiryStr = '♾️ Vĩnh viễn';
+            let daysLeft  = null;
+            if (s.expiry && s.expiry !== '9999-12-31') {
+                const exp = new Date(s.expiry);
+                daysLeft  = Math.ceil((exp - today) / 86400000);
+                expiryStr = `${s.expiry} (còn ${daysLeft > 0 ? daysLeft + ' ngày' : 'đã hết hạn'})`;
+            }
+            if (daysLeft !== null && daysLeft > 0 && !oldDaysHint) {
+                oldDaysHint = ` (${daysLeft}d)`;   // dùng cho label nút Tùy chỉnh
+            }
+            return `  • <b>${s.shopName}</b> — ${status} — Hết: ${expiryStr}`;
         }).join('\n');
-        warningBlock = `\n\n⚠️ <b>CẢNH BÁO: Machine ID này đã có ${existing.length} shop trong hệ thống!</b>\n${lines}\n\n❓ Cấp key mới sẽ ghi đè license cũ trên máy. Cân nhắc trước khi duyệt.`;
+        warningBlock = `\n\n⚠️ <b>Machine ID này đã có ${existing.length} key trong hệ thống:</b>\n${lines}\n\n💡 Dùng nút <b>✏️ Tùy chỉnh</b> để kích hoạt đúng số ngày còn lại.`;
     }
 
     await tg('sendMessage', {
@@ -460,6 +503,9 @@ async function sendActivationRequest(userId, machineId, mInfo, userName, shopNam
                 ],
                 [
                     { text: '♾️ Vĩnh viễn',  callback_data: `ok|${userId}|${machineId}|0`   },
+                    { text: `✏️ Tùy chỉnh${oldDaysHint}`, callback_data: `custom_days|${userId}|${machineId}` }
+                ],
+                [
                     { text: '❌ Từ chối',     callback_data: `no|${userId}|${machineId}`     }
                 ]
             ]
@@ -475,16 +521,20 @@ async function handleCallback(cb) {
 
     // ── Duyệt kích hoạt ──
     if (action === 'ok' && isAdmin) {
-        const userId    = parts[1];
-        const machineId = parts[2];
-        const months    = parseInt(parts[3] || '0');
+        const userId     = parts[1];
+        const machineId  = parts[2];
+        const monthsRaw  = parts[3] || '0';
+        // d<N> = custom days (e.g. d176 = 176 ngày); negative = trial days; positive = months
+        const isCustomDays = monthsRaw.startsWith('d');
+        const months       = isCustomDays ? -parseInt(monthsRaw.slice(1)) : parseInt(monthsRaw);
         const { key, expiry } = generateKey(machineId, months);
 
         let planLabel;
-        if (months === 0)       planLabel = 'Vĩnh viễn ♾️';
-        else if (months < 0)    planLabel = `${Math.abs(months)} ngày thử 🧪`;
-        else if (months < 12)   planLabel = `${months} tháng 📅`;
-        else                    planLabel = `${months / 12} năm`;
+        if (months === 0)        planLabel = 'Vĩnh viễn ♾️';
+        else if (isCustomDays)   planLabel = `${Math.abs(months)} ngày 📅`;
+        else if (months < 0)     planLabel = `${Math.abs(months)} ngày thử 🧪`;
+        else if (months < 12)    planLabel = `${months} tháng 📅`;
+        else                     planLabel = `${months / 12} năm`;
 
         const expiryFmt = months === 0 ? 'Không hết hạn' : new Date(expiry).toLocaleDateString('vi-VN');
 
@@ -560,6 +610,16 @@ async function handleCallback(cb) {
         const { shops } = await getShops();
         const { text, buttons } = buildShopListMessage(shops, page);
         await tg('editMessageText', { chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML', text, reply_markup: { inline_keyboard: buttons } });
+        return;
+    }
+
+    // ── Tùy chỉnh số ngày kích hoạt ──
+    if (action === 'custom_days' && isAdmin) {
+        const targetUserId  = parts[1];
+        const targetMachine = parts[2];
+        await tg('answerCallbackQuery', { callback_query_id: cb.id, text: '✏️ Nhập số ngày bên dưới' });
+        await tg('sendMessage', { chat_id: cb.message.chat.id, parse_mode: 'HTML',
+            text: `✏️ <b>Kích hoạt số ngày tùy chỉnh</b>\n\n💻 <code>${targetMachine}</code>\n👤 UserID: <code>${targetUserId}</code>\n\nGõ lệnh sau để kích hoạt:\n<code>/ngay ${targetUserId} ${targetMachine} &lt;số_ngày&gt;</code>\n\nVí dụ kích hoạt 176 ngày:\n<code>/ngay ${targetUserId} ${targetMachine} 176</code>` });
         return;
     }
 
