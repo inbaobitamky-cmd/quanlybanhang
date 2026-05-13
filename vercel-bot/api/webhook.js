@@ -104,22 +104,25 @@ async function revokeShop(machineId) {
     const mid = machineId.toUpperCase();
     const { list, sha } = await getRevokedList();
     const alreadyRevoked = list.some(id => id.toUpperCase() === mid);
+    let revokeOk = alreadyRevoked; // nếu đã có rồi thì coi như OK
     if (!alreadyRevoked) {
         list.push(mid);
-        await ghPut('revoked.json', list, sha, `Revoke ${mid}`);
+        revokeOk = await ghPut('revoked.json', list, sha, `Revoke ${mid}`);
     }
     const { shops, sha: s2 } = await getShops();
     const shop = shops.find(s => s.machineId === mid || s.machineId?.toUpperCase() === mid);
     if (shop) { shop.revoked = true; shop.revokedAt = new Date().toISOString(); await saveShops(shops, s2); }
+    return revokeOk; // true = ghi được revoked.json, false = token lỗi
 }
 
 async function unrevokeShop(machineId) {
     const mid = machineId.toUpperCase();
     const { list, sha } = await getRevokedList();
-    await ghPut('revoked.json', list.filter(id => id.toUpperCase() !== mid), sha, `Unrevoke ${mid}`);
+    const unrevokeOk = await ghPut('revoked.json', list.filter(id => id.toUpperCase() !== mid), sha, `Unrevoke ${mid}`);
     const { shops, sha: s2 } = await getShops();
     const shop = shops.find(s => s.machineId === mid || s.machineId?.toUpperCase() === mid);
     if (shop) { shop.revoked = false; delete shop.revokedAt; await saveShops(shops, s2); }
+    return unrevokeOk;
 }
 
 async function deleteShop(machineId) {
@@ -298,6 +301,24 @@ async function handleMessage(msg) {
                 if (s.expiry === '9999-12-31') return false;
                 return new Date(s.expiry) < new Date();
             }).length;
+            // Phát hiện machineId trùng (1 máy nhiều key)
+            const midMap = {};
+            shops.forEach(s => {
+                const mid = (s.machineId || '').toUpperCase();
+                if (!mid) return;
+                if (!midMap[mid]) midMap[mid] = [];
+                midMap[mid].push(s);
+            });
+            const duplicates = Object.entries(midMap).filter(([, list]) => list.length > 1);
+            let dupBlock = '';
+            if (duplicates.length > 0) {
+                const lines = duplicates.map(([mid, list]) => {
+                    const names = list.map(s => `<b>${s.shopName}</b>`).join(', ');
+                    return `  ⚠️ <code>${mid}</code>\n     → ${names}`;
+                }).join('\n');
+                dupBlock = `\n\n🚨 <b>PHÁT HIỆN ${duplicates.length} MACHINE ID TRÙNG:</b>\n${lines}`;
+            }
+
             await tg('sendMessage', {
                 chat_id: userId, parse_mode: 'HTML',
                 text: `📊 <b>Thống kê cửa hàng</b>\n\n` +
@@ -306,8 +327,8 @@ async function handleMessage(msg) {
                       `🔴 Bị khóa: <b>${locked}</b>\n` +
                       `♾️ Vĩnh viễn: <b>${lifetime}</b>\n` +
                       `⚠️ Sắp hết hạn (≤30 ngày): <b>${expiring}</b>\n` +
-                      `❌ Đã hết hạn: <b>${expired}</b>\n\n` +
-                      `⏰ ${new Date().toLocaleString('vi-VN')}`,
+                      `❌ Đã hết hạn: <b>${expired}</b>` +
+                      dupBlock + `\n\n⏰ ${new Date().toLocaleString('vi-VN')}`,
                 reply_markup: { keyboard: ADMIN_KEYBOARD.keyboard, resize_keyboard: true, persistent: true }
             });
             return;
@@ -316,16 +337,24 @@ async function handleMessage(msg) {
         if (text.startsWith('/khoa ')) {
             const machineId = text.slice(6).trim().toUpperCase();
             await tg('sendMessage', { chat_id: userId, text: '⏳ Đang khóa...' });
-            await revokeShop(machineId);
-            await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML', text: `🔴 <b>Đã khóa!</b>\n<code>${machineId}</code>` });
+            const ok = await revokeShop(machineId);
+            if (ok) {
+                await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML', text: `🔴 <b>Đã khóa!</b>\n<code>${machineId}</code>` });
+            } else {
+                await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML', text: `❌ <b>Khóa thất bại!</b>\nKhông ghi được vào revoked.json.\n⚠️ GITHUB_TOKEN trên Vercel có thể đã hết hạn — vào Vercel dashboard tạo token mới.\n\n<code>${machineId}</code>` });
+            }
             return;
         }
 
         if (text.startsWith('/mokhoa ')) {
             const machineId = text.slice(8).trim().toUpperCase();
             await tg('sendMessage', { chat_id: userId, text: '⏳ Đang mở khóa...' });
-            await unrevokeShop(machineId);
-            await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML', text: `🟢 <b>Đã mở khóa!</b>\n<code>${machineId}</code>` });
+            const ok = await unrevokeShop(machineId);
+            if (ok) {
+                await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML', text: `🟢 <b>Đã mở khóa!</b>\n<code>${machineId}</code>` });
+            } else {
+                await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML', text: `❌ <b>Mở khóa thất bại!</b>\nKhông ghi được vào revoked.json.\n⚠️ GITHUB_TOKEN trên Vercel có thể đã hết hạn.\n\n<code>${machineId}</code>` });
+            }
             return;
         }
 
@@ -383,10 +412,25 @@ async function sendWelcome(userId) {
 
 // ============ GỬI YÊU CẦU LÊN ADMIN ============
 async function sendActivationRequest(userId, machineId, mInfo, userName, shopName) {
-    const mi = mInfo || {};
+    const mi  = mInfo || {};
+    const mid = machineId.toUpperCase();
+
+    // Kiểm tra machineId đã tồn tại chưa
+    const { shops } = await getShops();
+    const existing  = shops.filter(s => (s.machineId || '').toUpperCase() === mid);
+    let warningBlock = '';
+    if (existing.length > 0) {
+        const lines = existing.map(s => {
+            const status  = s.revoked ? '🔴 Đang khóa' : '🟢 Active';
+            const expiry  = s.expiry === '9999-12-31' ? '♾️ Vĩnh viễn' : s.expiry;
+            return `  • <b>${s.shopName}</b> — ${status} — Hết hạn: ${expiry}`;
+        }).join('\n');
+        warningBlock = `\n\n⚠️ <b>CẢNH BÁO: Machine ID này đã có ${existing.length} shop trong hệ thống!</b>\n${lines}\n\n❓ Cấp key mới sẽ ghi đè license cũ trên máy. Cân nhắc trước khi duyệt.`;
+    }
+
     await tg('sendMessage', {
         chat_id: ADMIN_ID, parse_mode: 'HTML',
-        text: `🔔 <b>YÊU CẦU KÍCH HOẠT MỚI</b>\n\n🏪 <b>Cửa hàng:</b> ${shopName}\n👤 <b>Telegram:</b> ${userName} (ID: <code>${userId}</code>)\n\n💻 <b>Machine ID:</b>\n<code>${machineId}</code>\n\n🖥 CPU: ${mi.cpu || '—'}\n🔧 Mainboard: ${mi.board || '—'}\n💾 RAM: ${mi.ram || '—'}\n🪟 OS: ${mi.os || '—'}\n\n⏰ ${new Date().toLocaleString('vi-VN')}\n\n<b>Chọn thời hạn kích hoạt:</b>`,
+        text: `🔔 <b>YÊU CẦU KÍCH HOẠT MỚI</b>\n\n🏪 <b>Cửa hàng:</b> ${shopName}\n👤 <b>Telegram:</b> ${userName} (ID: <code>${userId}</code>)\n\n💻 <b>Machine ID:</b>\n<code>${machineId}</code>\n\n🖥 CPU: ${mi.cpu || '—'}\n🔧 Mainboard: ${mi.board || '—'}\n💾 RAM: ${mi.ram || '—'}\n🪟 OS: ${mi.os || '—'}\n\n⏰ ${new Date().toLocaleString('vi-VN')}${warningBlock}\n\n<b>Chọn thời hạn kích hoạt:</b>`,
         reply_markup: {
             inline_keyboard: [
                 [
