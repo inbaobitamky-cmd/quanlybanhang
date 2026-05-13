@@ -12,11 +12,11 @@
 | Web framework | Express 4 |
 | Template engine | EJS 3 (`views/*.ejs`) |
 | Lưu trữ dữ liệu | **JSON file** (`data.json`) – KHÔNG phải SQLite |
-| Build exe | `pkg` v6.15.0 → `QuanLyBanHang.exe` (~48MB) |
+| Build exe | `pkg` v6.15.0 → `QuanLyBanHang.exe` (~49MB) |
 | Obfuscation | `javascript-obfuscator` (chạy khi `npm run build`) |
 | UI framework | Tabler UI Beta17 + Tabler Icons webfont v2.40.0 (CDN) |
 | CSS chính | `public/css/style.css` |
-| Version hiện tại | `1.0.31` (config.js + version.json) |
+| Version hiện tại | `1.0.33` (config.js + version.json) |
 
 ---
 
@@ -27,49 +27,31 @@ quanlybanhang/                    ← THƯ MỤC GỐC (luôn sửa ở đây)
 ├── server.js                     ← Express routes + khởi động app (PORT 3000)
 ├── database.js                   ← Toàn bộ logic đọc/ghi data.json
 ├── data.json                     ← CƠ SỞ DỮ LIỆU chính (JSON, không phải SQLite)
-├── config.js                     ← VERSION, BOT_TOKEN, PORT, APP_NAME, DEVELOPER_CHAT_ID
-├── version.json                  ← {"version":"1.0.31","name":"Quản Lý Bán Hàng"}
-├── license.js                    ← generateKey(machineId, months) + generateResetCode()
+├── config.js                     ← VERSION, BOT_TOKEN, PORT, APP_NAME, DEVELOPER_CHAT_ID, VERCEL_CHECKIN_URL
+├── version.json                  ← {"version":"1.0.33","name":"Quản Lý Bán Hàng"}
+├── license.js                    ← generateKey() + checkOnlineRevocation() + blockLicense()
 ├── updater.js                    ← Kiểm tra update từ GitHub Releases API
-├── heartbeat.js                  ← Gửi Telegram khi khách mở phần mềm
+├── heartbeat.js                  ← Gửi Telegram khi khách mở + check revocation
+├── tray.js                       ← System tray icon
 ├── shops.json                    ← Danh sách cửa hàng được kích hoạt (dùng bởi vercel-bot)
-├── revoked.json                  ← Danh sách machineId bị thu hồi license
+├── revoked.json                  ← Danh sách machineId bị thu hồi license (client check khi khởi động)
 ├── views/
-│   ├── index.ejs                 ← Layout chính (sidebar + header + include page con)
-│   ├── sell.ejs                  ← Bán hàng + giỏ hàng + dịch vụ
-│   ├── warranty.ejs              ← Tra cứu bảo hành
-│   ├── invoice-print.ejs         ← In hóa đơn (file HTML ĐỘC LẬP, KHÔNG qua index.ejs)
-│   ├── history.ejs               ← Lịch sử đơn hàng
-│   ├── products.ejs              ← Danh sách linh kiện
-│   ├── customers.ejs             ← Quản lý khách hàng
-│   ├── suppliers.ejs             ← Nhà cung cấp
-│   ├── revenue.ejs               ← Báo cáo doanh thu (Chart.js)
-│   ├── transactions.ejs          ← Thu chi
-│   ├── settings.ejs              ← Cài đặt + backup + danh mục
-│   ├── login.ejs                 ← Đăng nhập (mật khẩu admin)
-│   └── activate.ejs              ← Kích hoạt license (nhập key)
-├── public/
-│   └── css/style.css             ← CSS toàn bộ giao diện (sidebar màu, per-page theming)
-├── admin-panel/
-│   ├── bot.js                    ← Bot Telegram LOCAL (long polling, /list, kích hoạt)
-│   ├── db.js                     ← Đọc/ghi admin-panel/data.json (licenses + pending)
-│   ├── data.json                 ← DB của admin panel: licenses[], pending[], settings{}
-│   ├── index.js                  ← Web UI admin panel (Express, port khác)
-│   └── views/                   ← Giao diện web admin panel
+│   ├── activate.ejs              ← Kích hoạt license (xanh khi active, đỏ khi revoked, có polling)
+│   └── ...                       ← Các view khác
 ├── vercel-bot/
-│   ├── api/webhook.js            ← Bot Telegram trên Vercel (/danhsach, /thongke, /khoa)
-│   └── lib/keygen.js             ← generateKey() dùng trong vercel-bot
+│   ├── api/webhook.js            ← Bot Telegram trên Vercel (/danhsach, /thongke, /khoa, /mokhoa, xóa shop)
+│   └── api/checkin.js            ← API endpoint: client gọi khi startup để fix stale revoked display
 ├── scripts/
-│   └── build.js                  ← npm run build: obfuscate + copy → release/
-├── release/
-│   ├── QuanLyBanHang/            ← Thư mục build (bị OVERWRITE mỗi lần build)
+│   ├── build.js                  ← npm run build: obfuscate + copy → release/ (heartbeat.js + tray.js + config.js đã thêm vào)
+│   └── publish.ps1               ← Tự động tăng version + build exe + mở GitHub
+├── dist/
 │   └── QuanLyBanHang.exe         ← File exe cuối cùng (copy cái này cho khách)
-└── backups/                      ← Auto-backup data.json mỗi 1 tiếng, giữ 7 ngày
+└── release/QuanLyBanHang/        ← Thư mục build trung gian (bị OVERWRITE mỗi lần build)
 ```
 
 ---
 
-## 3. Hệ thống License
+## 3. Hệ thống License & Revocation
 
 ### 3a. Cách tạo key
 ```javascript
@@ -80,28 +62,118 @@ generateKey(machineId, months)
 // months < 0  → Dùng thử theo ngày (-15 = 15 ngày, -30 = 30 ngày)
 ```
 
-**Brute-force range:** license.js tìm key trong 60 ngày tới → đủ cho -15 và -30 ngày thử.
-
-### 3b. Kiểm tra license khi khởi động
-```
-exe khởi động → license.js checkLicense(machineId)
-  → Tìm trong thư mục AppData/License/
-  → Brute-force giải key (duyệt ngày trong vòng 60 ngày)
-  → Nếu hết hạn → redirect sang activate.ejs
-  → Nếu còn hạn → chạy bình thường
-```
-
-### 3c. Gói kích hoạt hiện tại (bot Telegram)
-| Nút | callback_data | Ghi chú |
+### 3b. Gói kích hoạt (bot Telegram)
+| Nút | months | Ghi chú |
 |---|---|---|
-| 🧪 15 Ngày (thử) | `ok\|userId\|machineId\|-15` | Thử nghiệm |
-| 🧪 30 Ngày (thử) | `ok\|userId\|machineId\|-30` | Thử nghiệm dài |
-| 🕕 6 Tháng | `ok\|userId\|machineId\|6` | |
-| 1️⃣ 1 Năm | `ok\|userId\|machineId\|12` | |
-| 2️⃣ 2 Năm | `ok\|userId\|machineId\|24` | |
-| 3️⃣ 3 Năm | `ok\|userId\|machineId\|36` | |
-| ♾️ Vĩnh viễn | `ok\|userId\|machineId\|0` | |
-| ❌ Từ chối | `no\|userId\|machineId` | |
+| 🧪 15 Ngày (thử) | -15 | |
+| 🧪 30 Ngày (thử) | -30 | |
+| 🕕 6 Tháng | 6 | |
+| 1️⃣ 1 Năm | 12 | |
+| 2️⃣ 2 Năm | 24 | |
+| 3️⃣ 3 Năm | 36 | |
+| ♾️ Vĩnh viễn | 0 | |
+
+### 3c. Hệ thống Revocation (THU HỒI LICENSE) — ĐỌC KỸ
+
+**Cơ chế:**
+- `revoked.json` trên GitHub chứa mảng machineId bị thu hồi
+- `license.blocked` là file flag local — khi tồn tại → phần mềm bị khóa
+- `blockLicense()` → tạo file + invalidate cache
+- `unblockLicense()` → xóa file + invalidate cache
+- `isLicenseBlocked()` → kiểm tra file có tồn tại không
+
+**Luồng khóa (admin nhấn 🔴 Khóa):**
+```
+Bot webhook.js revokeShop(machineId)
+  → Thêm vào revoked.json trên GitHub
+  → Set revoked:true trong shops.json
+  
+Client (exe) mỗi 5 phút (setInterval trong heartbeat.js):
+  → checkOnlineRevocation(machineId)
+  → Nếu có trong revoked.json → blockLicense()
+  → Màn hình chuyển sang /activate với banner "Bị thu hồi"
+  
+Khi client mở lại (startup):
+  → Sau ~3 giây (setTimeout trong server.js startRevocationWatcher)
+  → checkOnlineRevocation(machineId, forceCheck=true)
+  → Nếu có → blockLicense() → kẹt trang activate
+```
+
+**Luồng mở khóa (admin nhấn 🟢 Mở khóa):**
+```
+Bot webhook.js unrevokeShop(machineId)
+  → Xóa khỏi revoked.json trên GitHub
+  → Set revoked:false trong shops.json
+
+Client (đang bị kẹt trang activate):
+  → Polling script trong activate.ejs gọi /api/license-status mỗi 10 giây
+  → /api/license-status reset cache + checkOnlineRevocation()
+  → Nếu không còn trong revoked.json → unblockLicense()
+  → Polling thấy active:true → redirect về '/'
+  
+Client mở lại sau khi admin mở khóa:
+  → heartbeat startup: checkOnlineRevocation() → không còn bị lock → restoreLicense()
+  → Server 3-second check → unblockLicense()
+  → Phần mềm tự mở bình thường
+```
+
+### ⚠️ CẢNH BÁO QUAN TRỌNG về Revocation
+
+**1. KHÔNG BAO GIỜ thêm bypass validateKey vào revocation check:**
+```javascript
+// ❌ TUYỆT ĐỐI KHÔNG LÀM THẾ NÀY:
+checkOnlineRevocation(machineId).then(notRevoked => {
+    if (!notRevoked) {
+        const lic = loadLicense();
+        if (lic && validateKey(lic)) { restoreLicense(); return; } // ← BUG! Bỏ qua lock
+        killLicense();
+    }
+});
+
+// ✅ ĐÚNG: Revoke luôn thắng, dù key local còn hạn
+checkOnlineRevocation(machineId).then(notRevoked => {
+    if (!notRevoked) {
+        killLicense(); // Block ngay, không bypass
+    } else {
+        restoreLicense(); // Tự phục hồi nếu đã được mở khóa
+    }
+});
+```
+
+**2. GitHub raw URL bị CDN cache ~5 phút:**
+```javascript
+// ❌ Bị cache:
+const url = `https://raw.githubusercontent.com/.../revoked.json`;
+
+// ✅ Bypass cache:
+const url = `https://raw.githubusercontent.com/.../revoked.json?t=${Date.now()}`;
+// + header: 'Cache-Control': 'no-cache'
+```
+Nếu không có cache-busting, sau khi admin mở khóa, client có thể mất tới 5 phút mới detect được.
+
+**3. `revoked.json` vs `shops.json revoked:true` — HAI THỨ KHÁC NHAU:**
+- `revoked.json`: danh sách machineId bị block thực sự → client check khi startup
+- `shops.json[].revoked: true`: CHỈ là display trong bot `/danhsach` → KHÔNG ảnh hưởng client
+- Khi admin nhấn 🔴 Khóa → CẢ HAI được cập nhật
+- Khi admin nhấn 🟢 Mở khóa → CẢ HAI được cập nhật
+- Nếu chỉ shops.json có `revoked:true` mà revoked.json không có machineId → client KHÔNG bị block (chỉ hiện sai màu trong bot)
+
+**4. checkin.js endpoint — chỉ fix display, KHÔNG can thiệp revocation:**
+```
+Client startup với license hợp lệ → POST /api/checkin (Vercel)
+  → Nếu machineId CÓ trong revoked.json → KHÔNG làm gì (để client bị block bình thường)
+  → Nếu machineId KHÔNG có trong revoked.json nhưng shops.json có revoked:true (stale)
+    → Xóa cờ revoked:true trong shops.json (fix display trong bot)
+```
+
+**5. Thứ tự kiểm tra khi startup (exe mới):**
+```
+t=0s: startRevocationWatcher() trong server.js — schedule setTimeout(3s)
+t=1s: heartbeat.start() — reset licCheckFile, async check GitHub
+t=1-3s: heartbeat check hoàn thành → kill/restoreLicense
+t=3s: server.js doCheck(forceCheck=true) → check GitHub lần nữa → kill/restoreLicense
+t=every 5min: setInterval check từ heartbeat + server.js
+```
 
 ---
 
@@ -114,415 +186,414 @@ exe khởi động → license.js checkLicense(machineId)
 | Chạy ở đâu | Máy tính của admin (long polling) | Vercel serverless (webhook) |
 | Lệnh admin | `/list`, `/help` | `/danhsach`, `/thongke`, `/khoa`, `/mokhoa` |
 | Lưu data | `admin-panel/data.json` (local) | `shops.json` trên GitHub (qua API) |
-| Kích hoạt | Nút inline keyboard từ pending | Nút inline keyboard từ pending |
 | Lưu license | `db.addLicense()` → local data.json | `saveShops()` → GitHub shops.json |
 
-### Lệnh bot VERCEL (`vercel-bot/api/webhook.js`)
-- `/danhsach` hoặc `📋 Danh sách cửa hàng` → Xem danh sách + nút khóa/mở
-- `/thongke` hoặc `📊 Thống kê` → Thống kê tổng quan
-- `/khoa MACHINEID` → Khóa cửa hàng
-- `/mokhoa MACHINEID` → Mở khóa cửa hàng
-- `/help` → Hướng dẫn
-
-### shops.json (GitHub) vs data.json (local)
-- `shops.json`: chỉ chứa shop kích hoạt QUA vercel-bot
-- `admin-panel/data.json`: chứa shop kích hoạt QUA local bot
-- **HAI HỆ THỐNG KHÔNG ĐỒNG BỘ VỚI NHAU**
-
-### Lỗi đã gặp với shops.json:
-Khi vercel-bot kích hoạt, nó gọi `getShops()` → nếu GitHub API lỗi tạm thời → trả về `[]` → `saveShops([1 shop])` → **MẤT HẾT dữ liệu cũ**. Đây là bug đã xảy ra, cần cẩn thận.
+### Nút trong bot VERCEL — mỗi shop có:
+```
+[🔴 Khóa: TÊN SHOP]  [🗑️ Xóa]   ← nếu đang active
+[🟢 Mở khóa: TÊN]   [🗑️ Xóa]   ← nếu đang revoked
+```
+Nút 🗑️ Xóa → hỏi xác nhận 2 bước → xóa khỏi shops.json + revoked.json
 
 ### Env vars cần thiết trên Vercel:
 - `BOT_TOKEN` — Token bot Telegram
 - `ADMIN_CHAT_ID` — Chat ID của admin
 - `GITHUB_TOKEN` — Personal Access Token (scope: repo) để đọc/ghi shops.json
-- `WEBHOOK_SECRET` — Bí mật xác thực webhook (tùy chọn)
+- `WEBHOOK_SECRET` — Bí mật xác thực webhook
+- **Nếu GITHUB_TOKEN hết hạn** → `/danhsach` hiện 0 shop → vào Vercel tạo PAT mới, update env var, redeploy
+
+### shops.json race condition (lỗi đã xảy ra):
+Khi vercel-bot kích hoạt mà GitHub API lỗi tạm thời → `getShops()` trả về `[]` → `saveShops([1 shop])` → **MẤT HẾT dữ liệu cũ**. Nếu `/danhsach` hiện 0, kiểm tra shops.json trên GitHub còn đủ không.
 
 ---
 
 ## 5. Hệ thống Update Check
 
-### Cách hoạt động:
 ```
-Client (index.ejs) → fetch('/api/update-check') mỗi 60 giây
-  → server.js (cache 5 phút, key _updateCheckCache)
+Client (index.ejs) → fetch('/api/update-check') mỗi 5 phút
+  → server.js (cache 5 phút)
     → updater.js → GitHub Releases API
       → So sánh tag_name với config.js VERSION
-        → Nếu version mới → trả về {hasUpdate:true, ...}
-          → index.ejs hiện banner + dot đỏ trên sidebar
+        → Nếu có version mới → badge đỏ "MỚI" ở menu sidebar "Cập nhật phần mềm"
 ```
 
-### Cache:
-- **Server-side:** 5 phút TTL (`UPDATE_CHECK_TTL = 5 * 60_000`)
-- **Client-side:** localStorage key `updateInfo_v3`, TTL 60 giây
-- ⚠️ Nếu network error → `{ upToDate: true, _networkError: true }` → **KHÔNG cache** client
+### UI Update (index.ejs):
+- **KHÔNG còn banner xanh phía trên** — đã xóa hoàn toàn
+- Menu **"Cập nhật phần mềm"** luôn hiện dưới "Nhân viên" (admin only)
+- Khi có bản mới: badge đỏ **"MỚI"** nhấp nháy bên cạnh menu item
+- Click vào → modal hiện rõ: phiên bản đang dùng → phiên bản mới, kích thước file, release notes
+- Khi đang dùng bản mới nhất: modal hiện "✅ Bạn đang dùng phiên bản mới nhất!"
 
-### Quy trình publish version mới:
-1. Tăng `VERSION` trong `config.js` và `version.json`
-2. Build: `npm run build` → `npx pkg . --output dist/QuanLyBanHang.exe`
-3. Tạo GitHub Release với tag `v1.0.XX`
-4. Upload file exe vào Release
-5. Khách đang dùng phiên bản cũ sẽ thấy thông báo sau tối đa 1 phút
-
----
-
-## 6. Giao diện (UI)
-
-### Sidebar multi-color (public/css/style.css)
-Mỗi mục sidebar có class `.ni-*` với màu riêng:
-- `.ni-sell` → xanh dương (#2563eb)
-- `.ni-customers` → tím (#7c3aed)
-- `.ni-products` → cam (#ea580c)
-- `.ni-history` → xanh lá (#16a34a)
-- `.ni-warranty` → đỏ (#dc2626)
-- `.ni-revenue` → vàng (#d97706)
-- `.ni-transactions` → hồng (#db2777)
-- `.ni-suppliers` → xanh cyan (#0891b2)
-- `.ni-staff` → indigo (#4338ca)
-- `.ni-settings-link` → xám (#374151)
-
-### Per-page background theming
-Mỗi trang có class `.page-<name>` trên `.page-wrapper`:
-```html
-<div class="page-wrapper page-<%= page %>">
-```
-CSS định nghĩa gradient nền và màu header theo từng page:
-- `.page-sell` → xanh dương nhạt
-- `.page-customers` → tím nhạt
-- `.page-products` → cam nhạt
-- `.page-history` → xanh lá nhạt
-- `.page-warranty` → đỏ nhạt
-- `.page-revenue` → vàng nhạt
-- `.page-transactions` → hồng nhạt
-- `.page-suppliers` → cyan nhạt
-
-### Tên cửa hàng dynamic trên sidebar (index.ejs)
+### ⚠️ CẢNH BÁO: Xung đột tên hàm openUpdateModal
 ```javascript
-// Sidebar brand name — lấy từ settings.shopName
-<%= (settings && settings.shopName && settings.shopName.trim())
-    ? settings.shopName.trim().toUpperCase()
-    : 'TÊN CỬA HÀNG' %>
+// index.ejs định nghĩa: openUpdateModal() — mở modal CẬP NHẬT PHẦN MỀM
+// repairs.ejs CŨ định nghĩa: openUpdateModal(id) — mở modal sửa phiếu sửa chữa
+// → XUNG ĐỘT: index.ejs load sau → ghi đè hàm của repairs.ejs
+// → Khi click "Cập nhật" trong bảng sửa chữa → mở nhầm modal cập nhật phần mềm!
+
+// ✅ ĐÃ FIX: repairs.ejs dùng tên riêng:
+function openRepairUpdateModal(id) { ... }  // ← tên khác, không bị ghi đè
 ```
-Khi lưu cài đặt → `settings.ejs` gọi `window.location.reload()` để cập nhật sidebar ngay.
+**KHÔNG BAO GIỜ** đặt hàm trong partial EJS (repairs, customers, v.v.) trùng tên với hàm global trong index.ejs.
+
+### ⚠️ CẢNH BÁO: Auto-update restart — KHÔNG dùng VBS/wscript
+```javascript
+// ❌ BUG CŨ (server.js PS1 script):
+// Start-Process 'wscript.exe' -ArgumentList 'QuanLyBanHang.vbs'
+// → VBS kiểm tra IsAdmin() → gọi runas → popup UAC trong cửa sổ ẨN
+// → Không ai thấy UAC dialog → exe không bao giờ khởi động lại được
+// → Browser kẹt mãi ở "Đang kết nối lại..."
+
+// ✅ FIX ĐÚNG (hiện tại):
+// Start-Process 'QuanLyBanHang.exe' -ArgumentList '--via-vbs' -WindowStyle Hidden
+// → PS1 kế thừa quyền Admin từ exe gốc → không cần UAC thêm
+// → exe thấy --via-vbs → bỏ qua bootstrap VBS → server lên bình thường
+```
+**Lưu ý:** Khách dùng exe CŨ (trước khi có fix này) phải cài exe mới thủ công 1 lần. Từ version có fix trở đi, auto-update hoạt động bình thường.
 
 ---
 
-## 7. Cấu trúc data.json (DB chính)
+## 6. activate.ejs — Trang kích hoạt
 
-```json
-{
-  "products": [],
-  "categories": [],
-  "subcategories": [],
-  "suppliers": [],
-  "sales": [],
-  "warranties": [],
-  "customers": [],
-  "serials": [],
-  "transactions": [],
-  "settings": {},
-  "expenseCategories": []
-}
-```
+Trang này hiển thị trong **mọi trường hợp** license không active (không redirect đi nữa):
 
-### Schema quan trọng
+| Trạng thái | Banner | Hành động |
+|---|---|---|
+| `status.active = true` | 🟢 Xanh — "Giấy phép đang hoạt động" | Hiện ngày hết hạn + nút "Vào phần mềm" |
+| `status.revoked = true` | ⛔ Đỏ đậm — "Bị thu hồi" | Polling 10s → auto-redirect khi mở khóa |
+| `status.expired = true` | 🟠 Cam — "Đã hết hạn" | Nhập key mới |
+| else | 🔴 Đỏ — "Chưa kích hoạt" | Nhập key / mở Telegram |
 
-**products[]**
-```json
-{
-  "id": 1700000000000,
-  "name": "Chuột Dareu LM106G",
-  "category": 10,
-  "subcategory": null,
-  "costPrice": 80000,
-  "retailPrice": 170000,
-  "wholesalePrice": 150000,
-  "warrantyMonths": 12,
-  "stock": 91,
-  "colors": [],
-  "hasSerial": false,
-  "supplierId": null,
-  "supplierWarrantyMonths": 0,
-  "createdAt": "2024-..."
-}
-```
-
-**sales[]**
-```json
-{
-  "id": 1700000000001,
-  "code": "DH1700000000001",
-  "customerId": 123,
-  "items": [
-    {
-      "productId": 456,
-      "price": 170000,
-      "quantity": 2,
-      "serial": "",
-      "color": "",
-      "warrantyMonths": 12,
-      "isService": false
-    }
-  ],
-  "subtotal": 340000,
-  "discount": 0,
-  "total": 340000,
-  "date": "2024-..."
-}
+**Polling script** (chỉ chạy khi `status.revoked`):
+```javascript
+setInterval(function() {
+    fetch('/api/license-status')
+        .then(d => d.json())
+        .then(d => {
+            if (d.active) → redirect về '/'  // Đã được mở khóa
+            if (!d.revoked) → reload trang    // Trạng thái khác
+        });
+}, 10000); // mỗi 10 giây
 ```
 
 ---
 
-## 8. Quy trình Build exe
+## 7. Quy trình Build exe
+
+### ⚠️ Build từ ROOT directory, KHÔNG phải release/
 
 ```bash
-# Bước 1: Build + obfuscate + copy sang release/
+# Bước 1: Obfuscate source → release/QuanLyBanHang/
 npm run build
+# (scripts/build.js — đã bao gồm heartbeat.js, tray.js, config.js)
 
-# Bước 2: Đóng gói thành exe
-cd release/QuanLyBanHang
-npx pkg .
-# → release/QuanLyBanHang.exe (~48MB)
+# Bước 2: Đóng gói thành exe từ ROOT directory
+npx pkg . --target node18-win-x64 --output dist/QuanLyBanHang.exe
+# pkg tự follow require() chains để bundle heartbeat.js, tray.js, etc.
+# ⚠️ Chạy từ ROOT, không chạy từ release/
 ```
 
-**⚠️ Warnings "Cannot resolve dynamic require"** khi pkg: BÌNH THƯỜNG, bỏ qua.
-
-**Khi phát hành version mới:**
-1. Tăng `VERSION` trong `config.js` và `version.json`
-2. `npm run build` → `npx pkg .`
-3. Tạo GitHub Release với tag `v1.0.XX`, upload exe
-
----
-
-## 9. Quy trình Git Push (LƯU Ý ĐẶC BIỆT)
-
-### ⚠️ Git index bị LOCK thường xuyên trên máy này
-File `.git/index` hay bị khóa → `git add` báo lỗi `unable to write new index file`.
-
-**Cách bypass (đã test thành công):**
+**Hoặc dùng publish script (tự động tăng version + build + mở GitHub):**
 ```powershell
-# Bước 1: Copy index ra temp file
-$tmpIdx = "$env:TEMP\git-index-tmp-$(New-Guid)"
-Copy-Item ".git\index" $tmpIdx
-$env:GIT_INDEX_FILE = $tmpIdx
+.\scripts\publish.ps1
+# → Tăng version, build exe, mở File Explorer + GitHub Releases
+```
 
-# Bước 2: Add files vào temp index (trong 1 PowerShell session)
-Set-Location "D:\file DEv quan trong\quanlybanhang"
-git add file1.js file2.js ...
+**⚠️ `release/QuanLyBanHang/` chứa code obfuscated** — không đọc được. Exe được build từ ROOT source files (không obfuscated). release/ chỉ là bản "portable node" để chạy `node server.js` thủ công.
 
-# Bước 3: Write tree
-$tree = git write-tree
+**Sau khi build exe mới:**
+1. Tạo GitHub Release với tag `v1.0.XX`
+2. Upload `dist/QuanLyBanHang.exe` vào Release
+3. Khách tải về và thay thế exe cũ
 
-# Bước 4: Tạo commit (dùng commit-tree)
-$parent = Get-Content ".git\refs\heads\main"
-$commit = "commit message" | git -c user.email="dev@quanlybanhang.vn" -c user.name="QuanLyBanHang Dev" commit-tree $tree -p $parent.Trim()
+---
 
-# Bước 5: Cập nhật ref trực tiếp (vì update-ref cũng bị khóa)
-Set-Content -Path ".git\refs\heads\main" -Value $commit -Encoding ascii
+## 8. Quy trình Git Push (LƯU Ý ĐẶC BIỆT)
 
-# Bước 6: Push
+### ⚠️ Git index bị LOCK thường xuyên — dùng temp index
+
+```bash
+# Luôn dùng cách này (Bash):
+GIT_INDEX_FILE=/tmp/idx_xxx git read-tree HEAD
+GIT_INDEX_FILE=/tmp/idx_xxx git add file1.js file2.js
+TREE=$(GIT_INDEX_FILE=/tmp/idx_xxx git write-tree)
+COMMIT=$(GIT_AUTHOR_NAME="QLBH" GIT_AUTHOR_EMAIL="qlbh@local" \
+         GIT_COMMITTER_NAME="QLBH" GIT_COMMITTER_EMAIL="qlbh@local" \
+         git commit-tree $TREE -p HEAD -m "commit message")
+printf "$COMMIT" > .git/refs/heads/main
 git push origin main
-# Sau push fix ref tracking:
-Set-Content -Path ".git\refs\remotes\origin\main" -Value $commit -Encoding ascii
 ```
 
-### ⚠️ Remote có thể có commits mới (vercel-bot cập nhật shops.json)
-Luôn fetch trước khi push. Nếu bị non-fast-forward:
-1. `git fetch origin`
-2. Tạo commit từ REMOTE tree (`git read-tree origin/main`) + apply thay đổi local
-3. Commit trên đầu remote HEAD
-4. Push
+### ⚠️ Remote thường có commits mới hơn local
+Vercel-bot tự cập nhật shops.json → remote có commits mới → push bị reject.
 
-### ⚠️ KHÔNG dùng `git cat-file -p ... | Set-Content` để copy file lớn
-Pipe PowerShell bị cắt ngắn output → file không đầy đủ → commit sai.
-Thay vào đó dùng: `git show COMMIT:path/to/file > localfile` hoặc `git show COMMIT:path/to/file | Out-File -Encoding utf8`
+**Cách xử lý:**
+1. `cat .git/FETCH_HEAD` để lấy remote SHA sau khi fetch
+2. `git read-tree <REMOTE_SHA>` → add files → commit với `-p <REMOTE_SHA>` → push
+
+### ⚠️ KHÔNG dùng pipe PowerShell để copy file lớn
+`git cat-file -p ... | Set-Content` bị cắt ngắn output → file không đầy đủ.
 
 ---
 
-## 10. Luồng dữ liệu quan trọng
-
-### 10a. Bán hàng → Bảo hành
-```
-sell.ejs (completeSale)
-  → POST /api/sales (server.js)
-    → db.addSale() (database.js)
-      → Trừ tồn kho (product.stock / colors[].stock / serial.status)
-      → Tạo bản ghi warranties[] cho TỪNG item
-      → Gắn saleId + saleCode vào tất cả warranties
-      → Tự động tạo/cập nhật customers[]
-```
-
-**⚠️ Khi sửa addSale():** `_warrantyStart` dùng để tag saleId/saleCode SAU vòng forEach. Đừng add `data.warranties.push()` sau forEach mà không cập nhật logic tagging.
-
-### 10b. Tra cứu bảo hành
-```
-warranty.ejs → GET /api/warranty/search?serial=|phone=|name=|code=
-  → db.searchWarranty()
-    - serial/phone/name: tìm includes()
-    - code: tìm sale.code → lấy w.saleId === sale.id → fallback: serial trong đơn
-```
-
-**⚠️ Records trước 4/2026** chưa có `saleId` → tìm theo code chỉ thấy nếu có serial.
-
-### 10c. In hóa đơn
-```
-sell.ejs → window.open('/invoice/DH...')
-  → server.js GET /invoice/:code → render invoice-print.ejs (STANDALONE HTML)
-```
-
-### 10d. Tồn kho theo loại sản phẩm
-
-| Loại | Điều kiện | Trừ tồn kho | Bảo hành |
-|---|---|---|---|
-| Serial | `hasSerial: true` | `serials[].status = 'Đã bán'` | 1 BH/serial |
-| Màu | `colors.length > 0` | `colors[i].stock -= qty` | 1 BH/item |
-| Đơn giản | else | `product.stock -= qty` | 1 BH/item |
-| Dịch vụ | `isService: true` | Không trừ | 1 BH/service |
-
----
-
-## 11. API Routes chính (server.js)
-
-| Method | Path | Chức năng |
-|---|---|---|
-| GET | `/` | Trang bán hàng |
-| GET | `/products` | Danh sách linh kiện |
-| GET | `/history` | Lịch sử bán |
-| GET | `/warranty` | Tra cứu bảo hành |
-| GET | `/customers` | Khách hàng |
-| GET | `/suppliers` | Nhà cung cấp |
-| GET | `/revenue?type=&year=&month=` | Báo cáo |
-| GET | `/transactions` | Thu chi |
-| GET | `/settings` | Cài đặt |
-| GET | `/invoice/:code` | In hóa đơn (standalone) |
-| POST | `/api/sales` | Tạo đơn hàng |
-| GET | `/api/warranty/search` | Tra cứu BH |
-| PUT | `/api/warranty/:id` | Cập nhật BH |
-| GET | `/api/settings` | Lấy cài đặt |
-| POST | `/api/settings` | Lưu cài đặt |
-| GET | `/api/update-check` | Kiểm tra version mới (cache 5 phút) |
-| GET | `/api/machine-info/:id` | Thông tin máy (cho bot) |
-
----
-
-## 12. Gotchas – Những điều HAY GÂY LỖI
-
-### 12a. CRLF trong EJS files (Windows)
-EJS files có line ending `\r\n`. Edit tool của Claude dùng `\n` → không match → NO CHANGE.
-
-**Fix:** Dùng Node.js script:
-```javascript
-let c = fs.readFileSync(filepath, 'utf8').replace(/\r\n/g, '\n');
-c = c.replace('OLD', 'NEW');
-fs.writeFileSync(filepath, c, 'utf8');
-```
-
-### 12b. Server load data vào RAM
-`database.js` load `data.json` vào RAM khi khởi động. Sửa file trực tiếp khi server chạy → không có tác dụng, phải restart.
-
-### 12c. invoice-print.ejs là file HTML HOÀN CHỈNH
-Không phải partial. Có đầy đủ `<html><head><body>`. Không dùng layout index.ejs.
-
-### 12d. printQuote() trong sell.ejs
-Build HTML string (template literal) rồi `w.document.write(html)`.
-**⚠️ KHÔNG** đặt `</script>` bên trong template literal → sẽ đóng `<script>` sớm, hỏng toàn bộ JS.
-
-### 12e. Backup tự động
-- Interval: 1 tiếng
-- Giữ 168 bản (7 ngày × 24)
-- Nếu `data.json` hỏng → tự khôi phục từ backup gần nhất khi restart
-
-### 12f. shops.json race condition
-Khi vercel-bot kích hoạt mà GitHub API lỗi tạm thời → `getShops()` trả về `[]` → `saveShops([1 shop])` → mất hết dữ liệu cũ. Nếu `/danhsach` hiện 0, kiểm tra:
-1. shops.json trên GitHub còn đầy đủ không
-2. `GITHUB_TOKEN` trong Vercel còn hiệu lực không
-
-### 12g. Hai thư mục project
-- **CHỈNH SỬA Ở:** `D:\file DEv quan trong\quanlybanhang\`
-- **KHÔNG sửa:** `D:\file DEv quan trong\quanlybanhang\release\QuanLyBanHang\` (bị overwrite khi build)
-
-### 12h. admin-panel/data.json vs shops.json
-- **admin-panel/data.json**: license data từ LOCAL bot (không tự đồng bộ lên GitHub)
-- **shops.json**: dữ liệu hiển thị trên `/danhsach` (chỉ cập nhật khi kích hoạt qua vercel-bot)
-- `/danhsach` trên Telegram chỉ thấy shop kích hoạt qua vercel-bot, KHÔNG thấy shop kích hoạt qua local bot
-
----
-
-## 13. Thông tin Bot & Config
+## 9. Thông tin Config & Bot
 
 ```javascript
-// config.js
+// config.js (v1.0.44) — KHÔNG commit file này lên git (trong .gitignore)
 BOT_USERNAME: 'QLBHMayTinh_Bot'
-BOT_TOKEN: '8609402555:AAHv2VmO0K0oVPext8LBUf7YGfyBfSogX_o'
+BOT_TOKEN: '[HIDDEN — xem config.js trên máy local, không được commit]'
 PORT: 3000
-APP_NAME: 'Quản Lý Bán Hàng'
-VERSION: '1.0.31'
-DEVELOPER_CHAT_ID: '5240628702'   // Admin Telegram ID
-```
-
-```javascript
-// admin-panel/data.json → settings
-githubToken: 'ghp_e3ui...'         // GitHub PAT (dùng trong admin panel)
-githubRepo: 'inbaobitamky-cmd/quanlybanhang'
+DEVELOPER_CHAT_ID: '[HIDDEN — xem config.js trên máy local]'
+VERCEL_CHECKIN_URL: 'https://quanlybanhang-umber.vercel.app/api/checkin'
 ```
 
 **GitHub Repo:** `https://github.com/inbaobitamky-cmd/quanlybanhang`
+**Vercel Bot URL:** `https://quanlybanhang-umber.vercel.app`
+**Bot webhook:** `https://quanlybanhang-umber.vercel.app/api/webhook`
 
 ---
 
-## 14. Danh sách cửa hàng hiện tại (shops.json)
+## 10. Gotchas – Những điều HAY GÂY LỖI
 
-| Cửa hàng | Machine ID | Gói | Trạng thái |
-|---|---|---|---|
-| TRẦN PHÚ COMPUTER | BF87B1-E5EEEE-3AD64B-FE8F90 | Vĩnh viễn ♾️ | Hoạt động |
-| Quân | 6E1DE5-D7A968-77006E-6632D3 | 6 tháng | Bị khóa |
-| ÁNH DƯƠNG COMPUTER | 586233-7103A7-85FCBC-CD1902 | Vĩnh viễn ♾️ | Hoạt động |
-| ÁNH DƯƠNG COMPUTER | 76C948-7F8062-6BD856-6F6BEA | Vĩnh viễn ♾️ | Hoạt động |
-| THIÊN AN | AC86AF-FB1A7F-06BE56-658EE3 | 3 ngày thử | Hết hạn |
-| THỦ ĐỨC COMPUTER | BF0B35-6DCBEB-4A3DFC-B35BC0 | 3 ngày thử | Hết hạn |
-| HBACK COMPUTER | 7DB0F9-E67BFD-13F0FF-EAD981 | 3 ngày thử | Hết hạn |
-| BÁC SĨ TIN HỌC | D785E5-97B350-31DB7F-643CA9 | 3 ngày thử | Hết hạn |
+### 10a. GitHub CDN cache raw URL (~5 phút)
+Khi đọc `raw.githubusercontent.com`, response bị cache Fastly ~5 phút. Luôn thêm `?t=${Date.now()}` + header `Cache-Control: no-cache` để bypass. Đã fix trong license.js.
+
+### 10b. CRLF trong EJS files (Windows)
+EJS files có line ending `\r\n`. Edit tool của Claude dùng `\n` → không match.
+Fix: dùng Node.js script với `.replace(/\r\n/g, '\n')`.
+
+### 10c. Server load data vào RAM
+`database.js` load `data.json` vào RAM khi khởi động. Sửa file trực tiếp khi server chạy → không có tác dụng, phải restart.
+
+### 10d. invoice-print.ejs là file HTML HOÀN CHỈNH
+Không phải partial. Có đầy đủ `<html><head><body>`. Không dùng layout index.ejs.
+
+### 10e. printQuote() trong sell.ejs
+Build HTML string rồi `w.document.write(html)`.
+⚠️ KHÔNG đặt `</script>` bên trong template literal.
+
+### 10f. shops.json race condition
+Khi GitHub API lỗi tạm thời → `getShops()` trả về `[]` → `saveShops([1 shop])` → mất hết. Nếu `/danhsach` hiện 0 → kiểm tra shops.json + GITHUB_TOKEN.
+
+### 10g. Hai thư mục project
+- **CHỈNH SỬA Ở:** `D:\file DEv quan trong\quanlybanhang\`
+- **KHÔNG sửa:** `release\QuanLyBanHang\` (bị overwrite khi build)
+
+### 10h. admin-panel/data.json vs shops.json KHÔNG đồng bộ
+- `admin-panel/data.json`: license từ LOCAL bot
+- `shops.json`: dữ liệu cho `/danhsach` (chỉ cập nhật khi kích hoạt qua vercel-bot)
+- `/danhsach` trên Telegram chỉ thấy shop kích hoạt qua vercel-bot
+
+### 10i. Khi build exe, heartbeat.js và tray.js PHẢI có trong obfuscate list
+scripts/build.js đã bao gồm `heartbeat.js`, `tray.js`, `config.js`. Nếu thiếu → exe không có code mới nhất cho các file này.
+
+### 10j. getLicenseStatus() được cache 60 giây
+Sau khi `blockLicense()` hoặc `unblockLicense()`, cache bị invalidate ngay (hàm đã gọi `invalidateLicenseCache()`). Middleware sẽ nhận trạng thái mới ở request tiếp theo.
+
+### 10k. callCheckin() KHÔNG được xóa revoked.json
+`vercel-bot/api/checkin.js` chỉ fix stale display trong `shops.json`. Nếu machineId CÓ trong `revoked.json` → return ngay, không làm gì → để client bị block bình thường.
+
+### 10l. Xung đột hàm JavaScript giữa partial EJS và index.ejs
+Tất cả partial EJS (repairs.ejs, customers.ejs, v.v.) được nhúng vào index.ejs qua `<%- include(...) %>`. Tất cả `<script>` trong các file này chạy cùng 1 scope trình duyệt. **Nếu partial dùng tên hàm trùng với hàm global trong index.ejs → hàm nào khai báo SAU sẽ ghi đè.** Đặt tên hàm đặc trưng cho từng module:
+- `openRepairUpdateModal(id)` ← repairs.ejs (KHÔNG phải `openUpdateModal`)
+- `openUpdateModal()` ← index.ejs (phần mềm update)
+
+### 10m. Tiếp nhận sửa chữa (repairs) — cấu trúc dữ liệu và đồng bộ bảo hành
+```javascript
+// data.repairs[]:
+{ id, code, type, status, customerName, customerPhone,
+  deviceName, serial, issue, accessories, estimatedCost,
+  warrantyMonths, warrantyNote, note, receivedAt, receivedBy,
+  returnedAt, returnedBy, finalCost, paymentMethod, paid }
+
+// Khi returnRepair() chạy với warrantyMonths > 0:
+//   → tạo data.warranties[] entry với repairId: repair.id
+//   → expiryDate tính từ saleDate (ngày trả máy)
+
+// Khi updateRepair() sửa warrantyMonths/warrantyNote:
+//   → TÌM data.warranties.find(w => w.repairId === repair.id)
+//   → Cập nhật warranty.warrantyMonths, tính lại expiryDate từ warranty.saleDate gốc
+//   → KHÔNG dùng Date.now() để tránh drift thời gian
+//   → Cập nhật warranty.status + warranty.note
+```
+**Nút "Cập nhật" trong bảng sửa chữa hiện với MỌI trạng thái kể cả "Đã trả"** (để sửa bảo hành nhập sai). Modal ẩn dropdown Trạng thái khi repair đã ở "Đã trả".
 
 ---
 
-## 15. Liên kết giữa các file (không được phá vỡ)
+## 11. Luồng dữ liệu chính
 
 ```
-database.js.addSale()
-    ↕ gọi
-server.js POST /api/sales
-    ↕ dữ liệu
-sell.ejs completeSale()
+database.js.addSale() ← server.js POST /api/sales ← sell.ejs
+database.js.searchWarranty() ← server.js GET /api/warranty/search ← warranty.ejs
+invoice-print.ejs ← server.js GET /invoice/:code ← sell.ejs + history.ejs
+updater.js ← server.js GET /api/update-check (cache 5p) ← index.ejs (60s interval)
 
-database.js.searchWarranty()
-    ↕ gọi
-server.js GET /api/warranty/search
-    ↕ gọi
-warranty.ejs searchWarrantyInfo()
+heartbeat.js (startup):
+  → Gửi Telegram "Khách vừa mở phần mềm" đến DEVELOPER_CHAT_ID
+  → checkOnlineRevocation() → kill/restoreLicense (NO bypass)
+  → callCheckin() → Vercel /api/checkin (fix stale shops.json display only)
 
-invoice-print.ejs
-    ↕ render bởi
-server.js GET /invoice/:code
-    ↕ link từ
-sell.ejs (sau completeSale) + history.ejs
+server.js startRevocationWatcher:
+  → setTimeout(3s): doCheck(forceCheck=true) → kill/restoreLicense
+  → setInterval(5min): doCheck(false) → kill/restoreLicense
 
-updater.js.checkForUpdate()
-    ↕ gọi
-server.js GET /api/update-check (cache 5 phút)
-    ↕ fetch mỗi 60 giây
-index.ejs (setInterval auto-check)
+vercel-bot/api/webhook.js:
+  → /danhsach → buildShopListMessage(shops) → buttons [🔴/🟢 + 🗑️]
+  → revoke/unrevoke: cập nhật revoked.json + shops.json
+  → delete_confirm/delete_yes: xóa khỏi cả hai
+  → /ok callback: saveShops + auto-unrevoke từ revoked.json khi cấp key mới
 
-heartbeat.js
-    ↕ chạy khi khởi động exe
-    ↕ gửi Telegram đến DEVELOPER_CHAT_ID
-    ↕ thông tin: shopName, machineId, licenseStatus
-
-admin-panel/bot.js (local polling)
-    ↕ nhận yêu cầu kích hoạt từ khách
-    ↕ ghi vào admin-panel/data.json
-
-vercel-bot/api/webhook.js (Vercel webhook)
-    ↕ nhận yêu cầu kích hoạt từ khách
-    ↕ đọc/ghi shops.json trên GitHub via API
-    ↕ lệnh admin: /danhsach /thongke /khoa /mokhoa
+vercel-bot/api/checkin.js:
+  → POST { machineId, secret=BOT_TOKEN, daysLeft }
+  → Nếu machineId trong revoked.json → return (không can thiệp)
+  → Nếu shops.json có revoked:true nhưng không trong revoked.json → fix display
 ```
+
+---
+
+## 12. sell.ejs — Trang bán hàng (Giỏ hàng)
+
+### 12a. Sửa giá inline trong giỏ hàng
+```javascript
+// Pattern: editingPriceIndex (đã có sẵn)
+let editingPriceIndex = -1;
+// Click vào giá → set editingPriceIndex = index → renderCart() → hiện <input>
+// Enter / blur → savePrice(index) → set cart[index].price → renderCart()
+// Escape → cancelPriceEdit() → editingPriceIndex = -1 → renderCart()
+```
+
+### 12b. Sửa bảo hành inline trong giỏ hàng (ĐÃ THÊM)
+```javascript
+// Pattern GIỐNG HỆT editingPriceIndex — đã triển khai:
+let editingWarrantyIndex = -1;
+
+function editWarranty(index) { editingWarrantyIndex = index; renderCart(); ... }
+function saveWarrantyEdit(index) { cart[index].warrantyMonths = val; editingWarrantyIndex = -1; renderCart(); }
+function cancelWarrantyEdit() { editingWarrantyIndex = -1; renderCart(); }
+```
+
+**warrantyCell trong renderCart():**
+- Khi `editingWarrantyIndex === index`: hiện `<input id="warrantyEditInput" type="number">`
+- Khi không editing: hiện `<span onclick="editWarranty(index)">🛡️ X tháng / Không BH</span>`
+- Màu xanh `#2fb344` nếu > 0, màu xám `#aaa` nếu = 0
+- Border-bottom dashed để gợi ý có thể click edit
+- **Hiện với CẢ sản phẩm lẫn dịch vụ** (không lọc theo type)
+
+**Đồng bộ dữ liệu — KHÔNG cần sửa backend:**
+```
+cart[index].warrantyMonths được sửa trực tiếp trong JS
+  → completeSale() gửi items[] với warrantyMonths mới
+  → server.js POST /api/sales → database.js addSale()
+  → addSale() dùng item.warrantyMonths để tạo warranty record
+  → warranty.expiryDate = saleDate + warrantyMonths * 30 ngày
+```
+Kết quả: lịch sử bán + bảo hành đều phản ánh đúng số tháng đã sửa.
+
+---
+
+## 13. products.ejs — Nhập giá có định dạng & gợi ý
+
+### 13a. 3 input giá (Giá vốn / Giá lẻ / Giá sỉ)
+Các input `productCostPrice`, `productRetailPrice`, `productWholesalePrice` là **type="text"** (KHÔNG phải number).
+Mỗi input bọc trong `<div class="price-wrap">` để dropdown gợi ý định vị absolute.
+
+```html
+<div class="price-wrap">
+    <input type="text" id="productCostPrice" value="0" placeholder="0"
+        oninput="onPriceInput(this)"
+        onfocus="onPriceFocus(this)"
+        onblur="onPriceBlur(this)">
+</div>
+```
+
+### 13b. Hàm helper giá (trong <script> của products.ejs)
+
+| Hàm | Mục đích |
+|---|---|
+| `getPriceVal(id)` | Đọc giá trị: bỏ dấu chấm → `parseInt` → số nguyên |
+| `setPriceVal(id, num)` | Ghi giá trị: `num.toLocaleString('vi-VN')` → input.value |
+| `onPriceFocus(el)` | Strip định dạng khi focus (để gõ tự do), `el.select()` |
+| `onPriceBlur(el)` | Format lại `1.000.000` khi blur; ẩn dropdown sau 180ms |
+| `onPriceInput(el)` | Lấy raw digits → gọi `_showPriceSuggestions()` |
+| `_showPriceSuggestions(el, num, digits)` | Tạo dropdown ×1K/×10K/×100K/×1M/×10M |
+| `selectPriceSug(e, id, val)` | `e.preventDefault()` (chặn blur) → điền giá → ẩn dropdown |
+
+**Lưu ý `selectPriceSug` dùng `e.preventDefault()`** — bắt buộc để mousedown không trigger blur trước khi điền giá.
+
+### 13c. Lấy/gán giá trong saveProduct() và editProductFromRow()
+```javascript
+// ✅ ĐÚNG — dùng helper:
+costPrice: getPriceVal('productCostPrice'),
+retailPrice: getPriceVal('productRetailPrice'),
+wholesalePrice: getPriceVal('productWholesalePrice'),
+
+// Khi edit (editProductFromRow):
+setPriceVal('productCostPrice', product.costPrice || 0);
+setPriceVal('productRetailPrice', product.retailPrice || product.price);
+setPriceVal('productWholesalePrice', product.wholesalePrice || product.price);
+
+// Khi mở modal thêm mới (openProductModal):
+setPriceVal('productCostPrice', 0);
+// (productRetailPrice và productWholesalePrice để trống — user nhập)
+```
+
+### 13d. CSS class liên quan
+```css
+.price-wrap { position:relative; }
+.price-suggestions { position:absolute; top:100%; left:0; right:0; z-index:999; display:none; ... }
+.price-sug-item { padding:9px 14px; cursor:pointer; ... }
+.price-sug-item:hover { background:#f0f7ff; color:#206bc4; font-weight:600; }
+```
+
+### 13e. UX hoạt động như thế nào
+```
+User click vào input → focus → strip dấu chấm → select all
+User gõ "26"        → input event → _showPriceSuggestions → dropdown hiện:
+                         26.000đ / 260.000đ / 2.600.000đ / 26.000.000đ / 260.000.000đ
+User click "2.600.000đ" → mousedown e.preventDefault() → el.value = "2.600.000" → dropdown ẩn
+User click ra ngoài → blur → format lại "2.600.000" (nếu chưa format)
+```
+
+---
+
+## 14. vercel-bot/api/webhook.js — deleteShop & revokeShop
+
+### 14a. Logic deleteShop (ĐÃ FIX — phải revoke trước khi xóa)
+```javascript
+async function deleteShop(machineId) {
+    const mid = machineId.toUpperCase();
+    // 1. Thêm vào revoked.json TRƯỚC (đảm bảo client bị khóa ngay)
+    const { list, sha } = await getRevokedList();
+    const alreadyRevoked = list.some(id => id.toUpperCase() === mid);
+    if (!alreadyRevoked) {
+        const revokeOk = await ghPut('revoked.json', [...list, mid], sha, `Delete+revoke ${mid}`);
+        if (!revokeOk) {
+            // Nếu GitHub API lỗi → ABORT, không xóa khỏi shops.json
+            return { error: 'revoke_failed' };
+        }
+    }
+    // 2. Chỉ xóa khỏi shops.json sau khi revoke thành công
+    const { shops, sha: s2 } = await getShops();
+    const filtered = shops.filter(s => (s.machineId || '').toUpperCase() !== mid);
+    await saveShops(filtered, s2);
+    return { ok: true };
+}
+```
+
+**Handler delete_yes kiểm tra:**
+```javascript
+if (result.error === 'revoke_failed') {
+    // Báo admin lỗi, KHÔNG xóa
+} else {
+    // Xóa thành công
+}
+```
+
+### 14b. Tại sao quan trọng
+- **Bug cũ:** deleteShop GỌI unrevoke (xóa khỏi revoked.json) rồi mới xóa shops.json
+  → Máy bị xóa khỏi list nhưng KHÔNG bị khóa → vẫn chạy phần mềm như thường
+- **Fix mới:** deleteShop ADD vào revoked.json TRƯỚC → máy bị khóa ngay lập tức → rồi mới xóa khỏi shops.json
+- `revokeShop()` và `deleteShop()` đều dùng `.toUpperCase()` cho machineId (case-insensitive)
+
+### 14c. Nếu thấy máy không bị khóa sau khi xóa
+→ Gửi `/khoa MACHINEID` trực tiếp vào bot để add vào revoked.json thủ công

@@ -18,6 +18,13 @@ keygit.txt
 server_log.txt
 server_err.txt
 
+# Thông tin bí mật — KHÔNG commit lên git
+config.js
+license.js
+tray.js
+admin-panel/bot.js
+admin-panel/data.json
+
 # File cài đặt lớn
 *.msi
 *.exe
