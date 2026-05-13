@@ -86,6 +86,7 @@
     "expiry": "2026-05-28",
     "activatedAt": "2026-05-13T04:16:17.128Z",
     "revoked": false,
-    "lastCheckinAt": 1778653933151
+    "lastCheckinAt": 1778653988226,
+    "lastDupAlert": 1778653988226
   }
 ]
