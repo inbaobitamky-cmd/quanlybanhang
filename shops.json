@@ -85,6 +85,7 @@
     "months": -15,
     "expiry": "2026-05-28",
     "activatedAt": "2026-05-13T04:16:17.128Z",
-    "revoked": false
+    "revoked": false,
+    "lastCheckinAt": 1778653933151
   }
 ]
