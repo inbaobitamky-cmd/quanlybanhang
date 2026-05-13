@@ -46,24 +46,24 @@ async function saveShops(shops, sha) {
     return ghPut('shops.json', shops, sha, `Auto-unrevoke via checkin`);
 }
 
-// ── Gửi cảnh báo trùng machineId lên Telegram admin ────────────────────────
-async function sendDupAlert(mid, dupShops) {
+// ── Gửi cảnh báo phát hiện nhiều exe cùng machineId lên Telegram admin ──────
+async function sendDupAlert(mid, shop) {
     if (!ADMIN_ID || !BOT_TOKEN) return;
-    const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-    const lines = dupShops.map((s, i) =>
-        `${i + 1}. 🏪 <b>${s.shopName || 'N/A'}</b> — hết hạn: ${s.expiry === '9999-12-31' ? '♾️ Vĩnh viễn' : (s.expiry || 'N/A')}`
-    ).join('\n');
+    const timeStr = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const shopName = shop ? (shop.shopName || 'N/A') : 'N/A';
+    const expiry = shop ? (shop.expiry === '9999-12-31' ? '♾️ Vĩnh viễn' : (shop.expiry || 'N/A')) : 'N/A';
 
     const text =
-        `🚨 <b>CẢNH BÁO: TRÙNG MACHINE ID!</b>\n\n` +
-        `💻 <code>${mid}</code>\n\n` +
-        `${lines}\n\n` +
-        `⏰ Check-in lúc: ${now}\n\n` +
-        `👉 Bấm nút bên dưới để xóa & thu hồi license (xóa TẤT CẢ entry trùng), hoặc gõ /thongke để quản lý thủ công.`;
+        `⚠️ <b>PHÁT HIỆN: 2 EXE CÙNG CHẠY 1 MÁY!</b>\n\n` +
+        `💻 <code>${mid}</code>\n` +
+        `🏪 Shop: <b>${shopName}</b> — hết hạn: ${expiry}\n\n` +
+        `📋 Cùng Machine ID đã check-in 2 lần trong vòng 3 phút.\n` +
+        `→ Máy này đang chạy <b>2 phần mềm khác nhau</b> (2 license.dat).\n\n` +
+        `⏰ Lúc: ${timeStr}\n\n` +
+        `👉 Dùng /thongke để kiểm tra hoặc bấm nút để xóa & thu hồi license.`;
 
-    // Một nút xóa tất cả entry của machineId này (deleteShop xóa hết cùng mid)
     const inline_keyboard = [
-        [{ text: `🗑️ Xóa & Thu hồi license (${mid.substring(0, 8)}…)`, callback_data: `delete_confirm|${mid}|0` }]
+        [{ text: `🗑️ Xóa & Thu hồi license`, callback_data: `delete_confirm|${mid}|0` }]
     ];
 
     try {
@@ -116,31 +116,42 @@ module.exports = async (req, res) => {
     const { shops, sha } = await getShops();
     if (!shops) return res.json({ ok: false, error: 'failed to read shops' });
 
+    const now = Date.now();
     let needsSave = false;
+    let action = 'none';
 
-    // ── Phát hiện trùng machineId ───────────────────────────────────────────
-    const dupShops = shops.filter(s => (s.machineId || '').toUpperCase() === mid);
-    if (dupShops.length > 1) {
-        // Rate limit: chỉ gửi cảnh báo tối đa 1 lần / 24 giờ cho machineId này
-        const now = Date.now();
-        const COOLDOWN = 24 * 60 * 60 * 1000; // 24h
-        const anyRecentAlert = dupShops.some(s => s.lastDupAlert && (now - s.lastDupAlert) < COOLDOWN);
-        if (!anyRecentAlert) {
-            await sendDupAlert(mid, dupShops);
-            dupShops.forEach(s => { s.lastDupAlert = now; });
+    // ── Tìm entry shop hiện tại của machineId này ────────────────────────────
+    const shop = shops.find(s => (s.machineId || '').toUpperCase() === mid);
+
+    // ── Phát hiện trùng machineId (rapid double check-in) ───────────────────
+    // Nếu cùng 1 machineId check-in 2 lần trong vòng 3 phút → nhiều exe đang chạy cùng lúc
+    const RAPID_WINDOW = 3 * 60 * 1000;   // 3 phút
+    const ALERT_COOLDOWN = 24 * 60 * 60 * 1000; // 24h không spam
+
+    if (shop && shop.lastCheckinAt && (now - shop.lastCheckinAt) < RAPID_WINDOW) {
+        const recentAlerted = shop.lastDupAlert && (now - shop.lastDupAlert) < ALERT_COOLDOWN;
+        if (!recentAlerted) {
+            await sendDupAlert(mid, shop);
+            shop.lastDupAlert = now;
             needsSave = true;
-            console.log(`[checkin] Duplicate machineId alert sent for ${mid} (${dupShops.length} shops)`);
+            action = 'dup_alert';
+            console.log(`[checkin] Rapid double check-in detected for ${mid} — gap=${Math.round((now - shop.lastCheckinAt)/1000)}s`);
         }
+    }
+
+    // ── Cập nhật lastCheckinAt để track thời điểm check-in gần nhất ─────────
+    if (shop) {
+        shop.lastCheckinAt = now;
+        needsSave = true;
     }
 
     // ── Fix stale revoked display ────────────────────────────────────────────
     // Máy KHÔNG có trong revoked.json nhưng shops.json vẫn còn cờ revoked: true (stale data)
-    // → chỉ fix display trong shops.json, không động đến revoked.json
-    const shop = shops.find(s => (s.machineId || '').toUpperCase() === mid);
     if (shop && shop.revoked) {
         shop.revoked = false;
         delete shop.revokedAt;
         needsSave = true;
+        if (action === 'none') action = 'fixed_display';
         console.log(`[checkin] Fixed stale revoked display for ${mid} — daysLeft=${daysLeft}`);
     }
 
@@ -148,8 +159,5 @@ module.exports = async (req, res) => {
         await saveShops(shops, sha);
     }
 
-    const action = needsSave
-        ? (dupShops.length > 1 ? 'dup_alert' : 'fixed_display')
-        : 'none';
     return res.json({ ok: true, action, machineId: mid });
 };
