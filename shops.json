@@ -75,5 +75,16 @@
     "expiry": "2026-05-11",
     "activatedAt": "2026-05-08T04:39:42.894Z",
     "revoked": false
+  },
+  {
+    "machineId": "6E1DE5-D7A968-77006E-6632D3",
+    "shopName": "(100d custom)",
+    "userId": "5240628702",
+    "userName": "—",
+    "plan": "100 ngày 📅",
+    "months": -100,
+    "expiry": "2026-08-21",
+    "activatedAt": "2026-05-13T06:58:43.958Z",
+    "revoked": false
   }
 ]
