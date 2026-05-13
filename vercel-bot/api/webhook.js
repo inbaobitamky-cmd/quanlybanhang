@@ -376,18 +376,36 @@ async function handleMessage(msg) {
             }
             const { key, expiry } = generateKey(targetMachine, -days);
             const expiryFmt = new Date(expiry).toLocaleDateString('vi-VN');
-            // Gửi key cho khách
+
+            // 1. Tự động unrevoke nếu đang bị khóa (QUAN TRỌNG: phải làm trước khi gửi key)
+            try {
+                const { list: rl, sha: rs } = await getRevokedList();
+                const upperList = rl.map(x => x.toUpperCase());
+                if (upperList.includes(targetMachine)) {
+                    await ghPut('revoked.json',
+                        rl.filter(id => id.toUpperCase() !== targetMachine),
+                        rs, `Unrevoke ${targetMachine} — custom ${days}d key issued`
+                    );
+                }
+            } catch(e) { console.log('[/ngay] unrevoke err:', e.message); }
+
+            // 2. Gửi key cho khách
             await tg('sendMessage', { chat_id: targetUserId, parse_mode: 'HTML',
                 text: `🎉 <b>KÍCH HOẠT THÀNH CÔNG!</b>\n\n🔑 <b>Key của bạn:</b>\n<code>${key}</code>\n\n📅 <b>Gói:</b> ${days} ngày 📅\n⏳ <b>Hạn sử dụng:</b> ${expiryFmt}\n\n📋 Sao chép key trên và nhập vào phần mềm.\n💾 <i>Lưu lại key — cần dùng khi cài lại máy.</i>` });
-            // Lưu vào shops.json
+
+            // 3. Cập nhật shops.json
             try {
                 const { shops: sl, sha: ss } = await getShops();
+                const old = sl.find(s => (s.machineId || '').toUpperCase() === targetMachine);
+                const shopName = old ? (old.shopName || '—') : '—';
+                const userName = old ? (old.userName || '—') : '—';
                 const filtered = sl.filter(s => (s.machineId || '').toUpperCase() !== targetMachine);
-                filtered.push({ machineId: targetMachine, shopName: `(${days}d custom)`, userId: targetUserId, userName: '—', plan: `${days} ngày 📅`, months: -days, expiry, activatedAt: new Date().toISOString(), revoked: false });
+                filtered.push({ machineId: targetMachine, shopName, userId: targetUserId, userName, plan: `${days} ngày 📅`, months: -days, expiry, activatedAt: new Date().toISOString(), revoked: false });
                 await saveShops(filtered, ss);
             } catch(e) { console.log('[/ngay] save shops err:', e.message); }
+
             await tg('sendMessage', { chat_id: userId, parse_mode: 'HTML',
-                text: `✅ <b>Đã cấp key ${days} ngày</b>\n🔑 <code>${key}</code>\n💻 <code>${targetMachine}</code>\n⏳ Hết hạn: ${expiryFmt}` });
+                text: `✅ <b>Đã cấp key ${days} ngày</b>\n🔑 <code>${key}</code>\n💻 <code>${targetMachine}</code>\n⏳ Hết hạn: ${expiryFmt}\n🔓 Đã tự động mở khóa nếu đang bị thu hồi.` });
             return;
         }
 
