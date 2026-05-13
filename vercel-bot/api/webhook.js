@@ -101,34 +101,45 @@ async function getRevokedList() {
 }
 
 async function revokeShop(machineId) {
+    const mid = machineId.toUpperCase();
     const { list, sha } = await getRevokedList();
-    if (!list.includes(machineId)) {
-        list.push(machineId);
-        await ghPut('revoked.json', list, sha, `Revoke ${machineId}`);
+    const alreadyRevoked = list.some(id => id.toUpperCase() === mid);
+    if (!alreadyRevoked) {
+        list.push(mid);
+        await ghPut('revoked.json', list, sha, `Revoke ${mid}`);
     }
     const { shops, sha: s2 } = await getShops();
-    const shop = shops.find(s => s.machineId === machineId);
+    const shop = shops.find(s => s.machineId === mid || s.machineId?.toUpperCase() === mid);
     if (shop) { shop.revoked = true; shop.revokedAt = new Date().toISOString(); await saveShops(shops, s2); }
 }
 
 async function unrevokeShop(machineId) {
+    const mid = machineId.toUpperCase();
     const { list, sha } = await getRevokedList();
-    await ghPut('revoked.json', list.filter(id => id !== machineId), sha, `Unrevoke ${machineId}`);
+    await ghPut('revoked.json', list.filter(id => id.toUpperCase() !== mid), sha, `Unrevoke ${mid}`);
     const { shops, sha: s2 } = await getShops();
-    const shop = shops.find(s => s.machineId === machineId);
+    const shop = shops.find(s => s.machineId === mid || s.machineId?.toUpperCase() === mid);
     if (shop) { shop.revoked = false; delete shop.revokedAt; await saveShops(shops, s2); }
 }
 
 async function deleteShop(machineId) {
-    // Xóa khỏi revoked.json (nếu có)
+    const mid = machineId.toUpperCase();
+    // 1. Thêm vào revoked.json để thu hồi license (PHẢI thành công trước khi xóa)
     const { list, sha } = await getRevokedList();
-    if (list.includes(machineId)) {
-        await ghPut('revoked.json', list.filter(id => id !== machineId), sha, `Delete ${machineId} — remove from revoked`);
+    const alreadyRevoked = list.some(id => id.toUpperCase() === mid);
+    if (!alreadyRevoked) {
+        const revokeOk = await ghPut('revoked.json', [...list, mid], sha, `Delete+revoke ${mid}`);
+        if (!revokeOk) {
+            // revoked.json update thất bại → KHÔNG xóa khỏi shops.json để tránh ghost state
+            console.log(`[deleteShop] WARN: ghPut revoked.json failed for ${mid} — aborting delete`);
+            return { error: 'revoke_failed' };
+        }
     }
-    // Xóa khỏi shops.json
+    // 2. Xóa khỏi shops.json (chỉ sau khi revoked.json đã cập nhật thành công)
     const { shops, sha: s2 } = await getShops();
-    const filtered = shops.filter(s => s.machineId !== machineId);
+    const filtered = shops.filter(s => (s.machineId || '').toUpperCase() !== mid);
     await saveShops(filtered, s2);
+    return { ok: true };
 }
 
 // ── Format danh sách cửa hàng ──
@@ -379,19 +390,20 @@ async function sendActivationRequest(userId, machineId, mInfo, userName, shopNam
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🧪 3 Ngày thử', callback_data: `ok|${userId}|${machineId}|-3` },
-                    { text: '📅 6 Tháng',    callback_data: `ok|${userId}|${machineId}|6`  }
+                    { text: '🧪 7 Ngày thử',  callback_data: `ok|${userId}|${machineId}|-7`  },
+                    { text: '🧪 15 Ngày thử', callback_data: `ok|${userId}|${machineId}|-15` }
                 ],
                 [
-                    { text: '1️⃣ 1 Năm',     callback_data: `ok|${userId}|${machineId}|12` },
-                    { text: '2️⃣ 2 Năm',     callback_data: `ok|${userId}|${machineId}|24` }
+                    { text: '📅 6 Tháng',     callback_data: `ok|${userId}|${machineId}|6`   },
+                    { text: '1️⃣ 1 Năm',      callback_data: `ok|${userId}|${machineId}|12`  }
                 ],
                 [
-                    { text: '3️⃣ 3 Năm',     callback_data: `ok|${userId}|${machineId}|36` },
-                    { text: '♾️ Vĩnh viễn', callback_data: `ok|${userId}|${machineId}|0`  }
+                    { text: '2️⃣ 2 Năm',      callback_data: `ok|${userId}|${machineId}|24`  },
+                    { text: '3️⃣ 3 Năm',      callback_data: `ok|${userId}|${machineId}|36`  }
                 ],
                 [
-                    { text: '❌ Từ chối',    callback_data: `no|${userId}|${machineId}`    }
+                    { text: '♾️ Vĩnh viễn',  callback_data: `ok|${userId}|${machineId}|0`   },
+                    { text: '❌ Từ chối',     callback_data: `no|${userId}|${machineId}`     }
                 ]
             ]
         }
@@ -504,11 +516,11 @@ async function handleCallback(cb) {
         await tg('answerCallbackQuery', { callback_query_id: cb.id, text: '⚠️ Xác nhận xóa?' });
         await tg('editMessageText', {
             chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML',
-            text: `🗑️ <b>Xác nhận xóa khỏi danh sách?</b>\n\n` +
+            text: `🗑️ <b>Xác nhận xóa và thu hồi license?</b>\n\n` +
                   `🏪 <b>${name}</b>\n💻 <code>${machineId}</code>\n\n` +
                   `⚠️ Thao tác này sẽ:\n` +
                   `• Xóa khỏi danh sách cửa hàng\n` +
-                  `• Xóa khỏi danh sách bị khóa (nếu có)\n` +
+                  `• <b>Thu hồi license — máy khách bị khóa ngay khi mở lại</b>\n` +
                   `• <b>Không thể hoàn tác!</b>`,
             reply_markup: { inline_keyboard: [
                 [
@@ -525,15 +537,24 @@ async function handleCallback(cb) {
         const machineId = parts[1];
         const page      = parseInt(parts[2] || '0');
         const { shops } = await getShops();
-        const shop = shops.find(s => s.machineId === machineId);
+        const shop = shops.find(s => (s.machineId || '').toUpperCase() === machineId.toUpperCase());
         const name = shop ? (shop.shopName || machineId) : machineId;
         await tg('answerCallbackQuery', { callback_query_id: cb.id, text: '🗑️ Đang xóa...' });
-        await deleteShop(machineId);
+        const result = await deleteShop(machineId);
+        if (result && result.error === 'revoke_failed') {
+            // revoked.json thất bại → cảnh báo admin, KHÔNG xóa
+            await tg('sendMessage', { chat_id: cb.message.chat.id, parse_mode: 'HTML',
+                text: `⚠️ <b>Lỗi thu hồi license cho ${name}</b>\n` +
+                      `Không thể cập nhật revoked.json (GitHub API error).\n` +
+                      `→ Máy khách CHƯA bị khóa và CHƯA bị xóa khỏi danh sách.\n` +
+                      `Thử lại sau vài giây hoặc dùng /khoa <code>${machineId.toUpperCase()}</code> để khóa thủ công trước.` });
+            return;
+        }
         const { shops: newShops } = await getShops();
         const safePage = Math.max(0, Math.min(page, Math.ceil(newShops.length / 5) - 1));
         const { text, buttons } = buildShopListMessage(newShops, safePage);
         await tg('editMessageText', { chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML', text, reply_markup: { inline_keyboard: buttons } });
-        await tg('sendMessage', { chat_id: cb.message.chat.id, parse_mode: 'HTML', text: `🗑️ Đã xóa <b>${name}</b> khỏi danh sách.` });
+        await tg('sendMessage', { chat_id: cb.message.chat.id, parse_mode: 'HTML', text: `🗑️ Đã xóa <b>${name}</b> khỏi danh sách.\n⛔ License đã bị thu hồi — máy khách sẽ bị khóa khi mở lại phần mềm.` });
         return;
     }
 
